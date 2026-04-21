@@ -4,6 +4,9 @@ Location-based mobile RPG where every real bar is a mini-dungeon.
 Walk to a bar, fight through procedurally generated rooms, claim
 it, leave a defender, earn while you sleep.
 
+> **Resuming work?** Read [`docs/STATUS.md`](docs/STATUS.md) first —
+> it tracks current phase, open decisions, and recommended next steps.
+>
 > **Design is locked.** See [`docs/BARBRAWL_SPEC.md`](docs/BARBRAWL_SPEC.md)
 > for the complete spec. Non-negotiable principles live in §1 of
 > that document and govern every implementation choice.
