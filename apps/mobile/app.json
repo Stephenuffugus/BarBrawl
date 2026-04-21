@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "BarBrawl",
+    "slug": "barbrawl",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "barbrawl",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#07070c"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.barbrawl.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "BarBrawl uses your location to verify you are at a bar when challenging it and to show nearby bars on the map.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "BarBrawl uses your location to notify you when your stationed defenders are attacked.",
+        "UIBackgroundModes": ["location", "remote-notification"]
+      }
+    },
+    "android": {
+      "package": "com.barbrawl.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#07070c"
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "POST_NOTIFICATIONS",
+        "VIBRATE"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "BarBrawl uses your location to verify bar challenges and to notify you of defender activity."
+        }
+      ],
+      "expo-secure-store",
+      [
+        "@rnmapbox/maps",
+        {
+          "RNMapboxMapsDownloadToken": "sk.REPLACE_WITH_DOWNLOAD_SCOPED_TOKEN"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

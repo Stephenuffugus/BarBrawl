@@ -1,0 +1,3 @@
+-- Seed data for local development only. NOT applied to production.
+-- Populated during Phase 2 (Map View with Mock Bars — spec §12).
+-- Intentionally empty for Phase 0.

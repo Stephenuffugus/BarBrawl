@@ -1,0 +1,52 @@
+# Node
+node_modules/
+pnpm-debug.log*
+npm-debug.log*
+yarn-error.log*
+.pnpm-store/
+
+# Expo / React Native
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+ios/
+android/
+
+# Build outputs
+build/
+*.apk
+*.aab
+*.ipa
+*.xcarchive
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Env + secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Test + coverage
+coverage/
+.nyc_output/
+
+# Misc
+*.log

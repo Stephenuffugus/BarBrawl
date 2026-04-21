@@ -1,0 +1,16 @@
+{
+  "name": "barbrawl",
+  "private": true,
+  "version": "0.0.0",
+  "description": "BarBrawl — location-based mobile RPG",
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "mobile": "pnpm --filter @barbrawl/mobile",
+    "lint": "pnpm -r --if-present run lint",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test"
+  }
+}
