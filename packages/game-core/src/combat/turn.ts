@@ -7,6 +7,7 @@ import { skillActionFor } from './skill-actions';
 import { applyStatuses, tickStatuses, deriveEffectiveStats, logStatusTick } from './status';
 import { gainFromEvent, gainFromDamage, clampResource, rulesFor } from './resources';
 import { foldPassives } from './passive-resolver';
+import { computeHookAdjustments, classifyTargetStatus } from './keystone-hooks';
 import type { ClassId } from '../types';
 
 // ─── helpers ─────────────────────────────────────────────────────────
@@ -142,7 +143,6 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
   ).length;
   const actorEff = deriveEffectiveStats(actor, { enemyCount });
   const targetEff = deriveEffectiveStats(target, { enemyCount });
-  const defAfterIgnore = Math.max(0, targetEff.def * (1 - (opts.defIgnore ?? 0)));
   const variance = Math.floor((opts.rng() - 0.5) * 10);
 
   // Pull actor's passive keystones to adjust crit behavior.
@@ -152,14 +152,36 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
     ...(actor.level !== undefined ? { level: actor.level } : {}),
   });
 
-  // Crit policy: allCrit > guaranteedCrit > noCrit > default roll.
+  // Combat hooks from keystones (auto-status, every-nth-crit, first-hit-crit,
+  // convert-to-dot, crit-def-ignore, vs-status-dmg).
+  const attacksLanded = actor.counters?.['attacks_landed'] ?? 0;
+  const targetStatus = classifyTargetStatus(target);
+  // Pre-roll willCrit (rough) for crit_def_ignore gating — exact crit is
+  // rolled below, but hooks need to know beforehand. We approximate using
+  // the same formula.
+  const preCritChance = actorEff.luck / 80 +
+    (actorMod.allCrit ? 1 : opts.guaranteedCrit ? 1 : actorMod.noCrit ? -1 : 0);
+  const willCritPre = preCritChance >= 1;
+  const hooks = computeHookAdjustments({
+    actor, target,
+    attackIndex: attacksLanded,
+    ...targetStatus,
+    willCrit: willCritPre,
+  });
+
+  // Crit policy: hook forceCrit > allCrit > guaranteedCrit > forceNonCrit > noCrit > default roll.
   let critBuff = 0;
-  if (actorMod.allCrit) critBuff = 1;
+  if (hooks.forceCrit) critBuff = 1;
+  else if (actorMod.allCrit) critBuff = 1;
   else if (opts.guaranteedCrit) critBuff = 1;
+  else if (hooks.forceNonCrit) critBuff = -1;
   else if (actorMod.noCrit) critBuff = -1;
   const critMult = actorMod.critMultOverride ?? opts.critMultiplierOverride;
 
-  const critRng = (opts.guaranteedCrit || actorMod.allCrit) ? () => 0 : opts.rng;
+  const defIgnore = (opts.defIgnore ?? 0) + hooks.extraDefIgnore;
+  const defAfterIgnore = Math.max(0, targetEff.def * (1 - defIgnore));
+
+  const critRng = (opts.guaranteedCrit || actorMod.allCrit || hooks.forceCrit) ? () => 0 : opts.rng;
   const res = computeDamage({
     attackerAtk: actorEff.atk,
     attackerLevel: 1,
@@ -180,7 +202,19 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
     ...(target.level !== undefined ? { level: target.level } : {}),
   });
   const damageTakenMult = 1 + targetMod.dmgTakenPct / 100;
-  const finalDamage = Math.max(1, Math.floor(res.damage * damageTakenMult));
+  // Apply hook damage scale + non-crit penalty on non-crit.
+  let scaledDamage = res.damage * hooks.damageScale;
+  if (!res.crit) scaledDamage *= hooks.nonCritPenalty;
+  const finalDamage = Math.max(1, Math.floor(scaledDamage * damageTakenMult));
+
+  // OUTBREAK / convert_to_dot: half the direct damage, convert the rest to
+  // a poison DoT applied to the target.
+  const autoStatuses: AppliedStatus[] = [...hooks.extraStatuses];
+  if (hooks.convertToDot) {
+    // Apply a 3-turn poison for roughly the halved damage / 3 per turn.
+    const perTurn = Math.max(1, Math.floor(finalDamage / 3));
+    autoStatuses.push({ tag: 'poison', turns: 3, magnitude: perTurn });
+  }
 
   const prefix = opts.labelPrefix ?? (res.crit ? 'CRITS' : 'hits');
   const entry: BattleLogEntry = {
@@ -193,11 +227,25 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
   if (opts.statusOnHit && opts.statusOnHit.length > 0 && newHp > 0) {
     nextTarget = applyStatuses(nextTarget, opts.statusOnHit);
   }
+  if (autoStatuses.length > 0 && newHp > 0) {
+    nextTarget = applyStatuses(nextTarget, autoStatuses);
+  }
   let working: BattleState = {
     ...state,
     combatants: replaceAt(state.combatants, opts.targetIdx, nextTarget),
     log: appendLog(state, entry),
   };
+
+  // Bump attacks_landed counter on the attacker.
+  const bumpedActor: Combatant = {
+    ...working.combatants[opts.actorIdx]!,
+    counters: {
+      ...(working.combatants[opts.actorIdx]!.counters ?? {}),
+      attacks_landed: attacksLanded + 1,
+      ...(res.crit ? { crits_landed: (working.combatants[opts.actorIdx]!.counters?.['crits_landed'] ?? 0) + 1 } : {}),
+    },
+  };
+  working = { ...working, combatants: replaceAt(working.combatants, opts.actorIdx, bumpedActor) };
 
   // Resource gains on attacker: crit + perfect-rhythm + action.
   if (actor.kind === 'player') {

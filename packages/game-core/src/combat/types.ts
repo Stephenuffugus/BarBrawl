@@ -56,6 +56,8 @@ export interface Combatant {
   allocatedNodes?: readonly string[];
   /** Remaining cooldown turns, keyed by node ID. */
   cooldowns?: Readonly<Record<string, number>>;
+  /** Per-battle counters (attacks_landed, crits_landed, etc.) for keystone hooks. */
+  counters?: Readonly<Record<string, number>>;
   /** For enemies: crude AI profile. Extend as AI matures. */
   aiProfile?: 'basic_attacker' | 'boss';
 }
