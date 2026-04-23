@@ -52,19 +52,42 @@ class (Summoner deferred to post-launch class expansion).
 - `src/character/` — `createLevel1Character`, `createStarterRoster`,
   `toRuntime`. Produces DB row shapes + in-memory runtime with per-level
   stat scaling from spec §5.6.
-- `src/combat/` — **Turn engine SKELETON**. Has: `BattleState` types,
-  `initBattle`, `applyPlayerAction` (basic_attack + flee + consumable
-  log), `advanceTurn` with basic enemy AI, `endBattle`. Skills currently
-  fall back to basic-attack math because node `effect` fields are
-  display-only text — see memory `project_skill_effects_open.md` for
-  the structured-action follow-up plan.
-- **104 unit tests pass** across 7 suites. Root `pnpm -r typecheck` clean.
+- `src/combat/` — **Turn engine now fully wired.** Has:
+  - `BattleState`/`Combatant`/`PlayerAction` types
+  - `initBattle`, `applyPlayerAction`, `advanceTurn`, `endBattle`
+  - **Full SkillAction dispatcher**: 16 action kinds (attack, multi_hit,
+    aoe_attack, heal, skip_enemy, buff, debuff, dodge_boost, block,
+    charge, apply_all_statuses, wager_coin_flip, chip_consume_attack,
+    random_multiplier_attack, aoe_skip, reveal_and_nerf, swap_hp_pct,
+    random_from_pool)
+  - `SKILL_ACTIONS` registry covering 42 active skill nodes + OLDEST
+    TRICK keystone (43 entries). Balance numbers preserved from the v6
+    prototype; any value I chose has a `// BALANCE:` comment.
+  - Status resolver with DoT tick, stun skip, buff/debuff sums into
+    effective stats. Cooldowns decrement per-actor turn. Tempo decays.
+  - Per-class resource generation rules (Focus/Grit/Curse Stacks/Tempo/
+    Reserve/Momentum/Chips) triggered on turn_start, crit, action,
+    damage_taken, perfect_rhythm, dodge, overheal.
+- **125 unit tests pass** across 8 suites. Root `pnpm -r typecheck` +
+  `pnpm -r lint` + `pnpm -r test` all green.
 
 **Supabase additions:**
 - `supabase/migrations/20260423000001_add_gambler_class.sql` — extends
   the `characters.class_id` CHECK constraint to allow 'gambler'.
+- `supabase/migrations/20260423000002_items.sql` — account-bound items
+  table with equipped_character_id, equipped_slot, chain_asset_id
+  (schema-forward for blockchain hook), unique-equipped-per-slot index,
+  and RLS policies.
 - `supabase/seed.sql` — 15 mock bars across NYC, SF, Austin covering
   all 7 bar types. Applied by `supabase db reset`.
+- `supabase/functions/` — 4 edge-function skeletons (character-create,
+  battle-start, battle-action, battle-end) with typed request/response
+  contracts and documented integration shape with game-core.
+
+**Mobile build fixes:**
+- eslint downgraded from `^9.0.0` to `^8.57.0` + `@typescript-eslint/*`
+  from `^8` to `^7.18` to restore legacy `.eslintrc.js` support. Lint
+  now passes workspace-wide.
 
 **CI lint is broken (pre-existing, not my changes).** `apps/mobile`
 ships `eslint ^9.0.0` but keeps legacy `.eslintrc.js`; ESLint 9 requires
@@ -151,11 +174,11 @@ decision. Recommended starting point when resuming.
 ## Phase checklist progress (from spec §12)
 
 - [x] Phase 0: Project Setup
-- [ ] Phase 1: Auth & Character Creation — **blocked** on Supabase project
-- [ ] Phase 2: Map View with Mock Bars — **blocked** on distribution decision
+- [ ] Phase 1: Auth & Character Creation — **bootstrap logic done**; blocked on Supabase project for table writes
+- [ ] Phase 2: Map View with Mock Bars — **data (seed) done**; blocked on distribution decision for map lib
 - [x] Phase 3: Skill Trees — **data layer complete** (21 trees, 189 nodes). UI TBD.
-- [ ] Phase 4: Single-Player Combat — **math + data ported**; combat state machine TBD
-- [x] Phase 5: Rewards, XP & Loot — **generator complete** (affixes, anointments, rollItem). Endpoint wiring TBD.
+- [x] Phase 4: Single-Player Combat — **engine complete** (SkillAction dispatch, status, cooldowns, resources). UI + rhythm input wiring TBD.
+- [x] Phase 5: Rewards, XP & Loot — **generator + items table complete**. Endpoint wiring TBD.
 - [ ] Phase 6: Real Bars via Google Places — blocked on Google Cloud + cost
 - [ ] Phase 7: Defender System — depends on Phase 4
 - [ ] Phase 8: Consumables & Stash
@@ -177,22 +200,27 @@ When you come back to this project, answer these and we can move:
 
 **Immediate next-turn work queue (all portable, path A):**
 
-1. **Structured skill effects** — open design question per memory
-   `project_skill_effects_open.md`. Need user sign-off on SkillAction
-   schema before back-filling the 42 active/keystone nodes with typed
-   action data. This unblocks the combat engine's skill branch.
-2. **Status effects + cooldowns + resources in combat** — depends on #1.
-   Tick-down in advanceTurn, apply/resolve in applyPlayerAction.
-3. **Items table migration + RLS** — `items` table with `bound_to_user_id`
-   and `chain_asset_id` columns (schema-forward for blockchain hook
-   without committing). `rollItem()` wired into `POST /battle/end`.
-4. **Edge function skeletons** — Deno stubs for `/battle/start`,
-   `/battle/action`, `/battle/end`, `/defender/station` wrapping game-core.
-5. **Open raid stubs** (post-Phase-7) — data model only.
-6. **Fix mobile lint** — downgrade eslint 9 → 8.57 OR migrate to flat config.
+1. **Passive-effect resolution** — the `allocated_nodes` array on
+   characters tells us what the player has chosen, but passive effects
+   (Fixed Gaze +4% crit, Seasoned +25% DEF, Grounded +5 DEF, etc.) are
+   not yet applied to effective stats. Build `passive-effects.ts`
+   interpreter and hook into `deriveEffectiveStats`. ~145 nodes to
+   annotate with structured passive data.
+2. **Passive keystones** — HAZE, IMMOVABLE, CLARITY ABSOLUTE, etc.
+   Most are global battle modifiers (crit-only, dmg-taken-reduction,
+   all-hits-apply-status). Should live alongside the passive system.
+3. **Consumables** — define consumable item types + in-battle effects.
+   Spec §5.8 has the catalog.
+4. **Rhythm UI + input wiring** — client-side: the rhythm bar animation,
+   tap detection, RhythmQuality classification. Mobile/web split.
+5. **First edge function deployed end-to-end** — pick one (character-
+   create is simplest), wire the import_map.json, deploy, smoke-test.
+6. **Open raid stubs** (post-Phase-7) — data model only, deferred.
+7. **Passive mastery bonuses** — spec §5.7 tier rewards layered onto
+   character stats as passive buffs.
 
-If you just say "keep going," I'll default to #3 (items migration) which
-doesn't need a design decision.
+If you just say "keep going," I'll default to #1 (passive effects) since
+it blocks actual builds working correctly in combat.
 
 ## How to drop back in with Claude
 
