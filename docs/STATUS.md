@@ -233,8 +233,6 @@ decision. Recommended starting point when resuming.
 - [x] Phase 3: Skill Trees — **data layer complete** (21 trees, 189 nodes, 146 passives + 43 active actions). UI TBD.
 - [x] Phase 4: Single-Player Combat — **engine complete** (SkillAction dispatch, passives, keystone hooks, status, cooldowns, resources, consumables, auto-revive). UI + rhythm input wiring TBD.
 - [x] Phase 5: Rewards, XP & Loot — **generator + items table complete**. Endpoint wiring TBD.
-- [x] Phase 7: Defender System — **logic complete** (station, decay, coins, XP, recall). Edge function + UI TBD.
-- [x] Phase 8: Consumables — **catalog + resolver complete**. Stash/pack UI TBD.
 - [ ] Phase 6: Real Bars via Google Places — blocked on Google Cloud + cost
 - [x] Phase 7: Defender System — **logic complete** (station, decay, coins, XP, recall). Edge function + UI TBD.
 - [x] Phase 8: Consumables — **catalog + resolver + crafting complete**. Stash/pack UI TBD.
@@ -251,34 +249,38 @@ When you come back to this project, answer these and we can move:
 
 1. **Distribution target?** Native only / web only / both / still TBD?
 2. **Ready to run `SETUP.md` checklist?** (Mostly blocked on capital.)
-3. **Commit the uncommitted work?** (pnpm-lock, design doc, game-core.)
-4. **Fix the broken mobile lint?** Downgrade to eslint 8 is the minimal fix.
 
-**Immediate next-turn work queue (all portable, path A):**
+**The game-core logic layer is substantially complete.** Phases 3, 4, 5,
+7, 8, 11, 12 are green at the logic layer. Remaining work is UI + infra
+(blocked on distribution target + Supabase project) plus minor content
+additions.
 
-1. **Rhythm UI + input wiring** — client-side: rhythm bar animation,
-   tap detection, RhythmQuality classification. Mobile/web split.
-   Needs the distribution-target decision.
-2. **First edge function deployed end-to-end** — pick one (character-
-   create is simplest), wire `supabase/functions/import_map.json`,
-   deploy, smoke-test. Blocked on Supabase project.
-3. **Daily quest system** — spec §5.6 mentions 3 rotating daily quests
-   awarding 25-150 XP each. Pure generator + completion detector.
-4. **Consumables crafting** — combine N rare loot items into a consumable
-   (spec §5.8 sources mention crafting).
-5. **Bar room procgen** — spec §5.4. Daily 3-5 rooms from bar's pool
-   using (bar_id, date) seed. Already sketched in prototype; port to
-   game-core as a pure function.
-6. **Open raid stubs** (post-Phase-7) — data model only, deferred.
+When you pick this back up, consider in this order:
 
-The logic layer of the game is now largely complete. The gates are
-distribution-target, Supabase project (both blocked on user/capital),
-and client UI work.
+1. **Rhythm resolver math** — portable: given a tap-delta-ms return a
+   RhythmQuality. Pairs with client-side UI later.
+2. **Anti-cheat hashing utilities** — request signing, rate-limit bucket
+   counters. Partially a Supabase RLS/edge concern, partially in-package.
+3. **Rhythm UI + input wiring** — client-side animation, tap detection.
+   Blocked on distribution target.
+4. **First edge function deployed end-to-end** — wire
+   `supabase/functions/import_map.json` so Deno can import game-core,
+   deploy character-create, smoke-test. Blocked on Supabase project.
+5. **Battle replay viewer** — game-core's deterministic RNG makes this
+   trivial; UI layer needed.
+6. **Bar nomination + owner verification flow** — spec §5.11 workflow.
+7. **Open raid system** (post-launch v1.5) — design sketch in DESIGN_V1.md.
+
+Data additions welcome but not blockers: more class anointments, quest
+variants, cosmetic rewards, world-boss tiers.
 
 ## How to drop back in with Claude
 
 Short pickup prompt for future sessions:
 
-> Read `docs/STATUS.md` first. The repo is paused at end-of-Phase-0.
-> Pick up from the "Recommended next steps" section. Default to
-> path A unless I say otherwise.
+> Read `docs/STATUS.md` first. The game-core logic layer is
+> substantially complete (see "Where we are"). Most remaining work is
+> UI + infra (rhythm input, map rendering, edge function deploy) and
+> is gated on the distribution target decision + Supabase project.
+> If you say "keep going", default to the ordered list under
+> "When you pick this back up".
