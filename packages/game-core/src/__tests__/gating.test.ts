@@ -21,8 +21,8 @@ function loadout(partial: Partial<CharacterGatingLoadout> = {}): CharacterGating
     equippedMarks: partial.equippedMarks ?? [],
     inventoryKeys: partial.inventoryKeys ?? [],
     barMasteryTiers: partial.barMasteryTiers ?? {
-      dive: 0, nightclub: 0, cocktail: 0, sports: 0,
-      speakeasy: 0, brewery: 0, craft: 0,
+      dive: 0, pub: 0, sports: 0, cocktail: 0,
+      wine: 0, brewery: 0, nightclub: 0,
     },
   };
 }
@@ -30,7 +30,7 @@ function loadout(partial: Partial<CharacterGatingLoadout> = {}): CharacterGating
 describe('BAR_THEME_DAMAGE', () => {
   it('maps every bar theme to exactly one damage type', () => {
     const themes: readonly BarType[] = [
-      'dive', 'nightclub', 'cocktail', 'sports', 'speakeasy', 'brewery', 'craft',
+      'dive', 'pub', 'sports', 'cocktail', 'wine', 'brewery', 'nightclub',
     ];
     for (const t of themes) {
       expect(BAR_THEME_DAMAGE[t]).toBeTruthy();
@@ -60,7 +60,7 @@ describe('RESISTANCE_MARKS', () => {
 describe('VIP_KEYS', () => {
   it('has one key per bar theme', () => {
     const themes: readonly BarType[] = [
-      'dive', 'nightclub', 'cocktail', 'sports', 'speakeasy', 'brewery', 'craft',
+      'dive', 'pub', 'sports', 'cocktail', 'wine', 'brewery', 'nightclub',
     ];
     for (const t of themes) {
       expect(VIP_KEY_BY_BAR_THEME[t]).toBeDefined();
@@ -132,8 +132,8 @@ describe('barThemeUnlocked (mastery gate)', () => {
   it(`unlocks at mastery tier ${MASTERY_TIER_FOR_THEME_UNLOCK}`, () => {
     const at = loadout({
       barMasteryTiers: {
-        dive: MASTERY_TIER_FOR_THEME_UNLOCK, nightclub: 0, cocktail: 0,
-        sports: 0, speakeasy: 0, brewery: 0, craft: 0,
+        dive: MASTERY_TIER_FOR_THEME_UNLOCK, pub: 0, sports: 0,
+        cocktail: 0, wine: 0, brewery: 0, nightclub: 0,
       },
     });
     expect(barThemeUnlocked(at, 'dive')).toBe(true);
@@ -142,8 +142,8 @@ describe('barThemeUnlocked (mastery gate)', () => {
   it('stays locked below mastery threshold', () => {
     const below = loadout({
       barMasteryTiers: {
-        dive: MASTERY_TIER_FOR_THEME_UNLOCK - 1, nightclub: 0, cocktail: 0,
-        sports: 0, speakeasy: 0, brewery: 0, craft: 0,
+        dive: MASTERY_TIER_FOR_THEME_UNLOCK - 1, pub: 0, sports: 0,
+        cocktail: 0, wine: 0, brewery: 0, nightclub: 0,
       },
     });
     expect(barThemeUnlocked(below, 'dive')).toBe(false);

@@ -22,16 +22,17 @@ export type DamageType =
   | 'heat'
   | 'edged';
 
-// Bar themes map 1:1 to BarType from core types; the theme determines the
-// Tier-4+ damage type per design doc §3.1.
+// Bar themes map 1:1 to BarType from core types. DESIGN_V1.md §3.1 used
+// placeholder names (speakeasy, craft) that didn't match the DB schema;
+// this reconciles to the DB's 7 types, preserving design intent.
 export const BAR_THEME_DAMAGE: Readonly<Record<BarType, DamageType>> = Object.freeze({
   dive: 'blunt',       // chairs, fists
-  nightclub: 'sonic',  // sound blasts, strobe
-  cocktail: 'toxic',   // burn DoTs, concoctions
-  sports: 'impact',    // projectiles
-  speakeasy: 'shadow', // debuffs
-  brewery: 'heat',     // fermenter hazards
-  craft: 'edged',      // glass-cut
+  pub: 'edged',        // darts, broken pint glass
+  sports: 'impact',    // thrown projectiles, pool balls
+  cocktail: 'toxic',   // concoction burns, DoT elixirs
+  wine: 'shadow',      // sommelier hexes, cellar curses
+  brewery: 'heat',     // fermenter blasts, kiln hazards
+  nightclub: 'sonic',  // strobe, bass wave, sound blasts
 });
 
 export interface ResistanceMark {

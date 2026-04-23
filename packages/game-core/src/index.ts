@@ -24,3 +24,12 @@ export {
 } from './math/xp';
 export * as Loot from './loot';
 export * as Gating from './gating';
+export * as Combat from './combat';
+export {
+  createLevel1Character,
+  createStarterRoster,
+  toRuntime,
+  type NewCharacterRow,
+  type CharacterRuntime,
+  type CreateOptions,
+} from './character';

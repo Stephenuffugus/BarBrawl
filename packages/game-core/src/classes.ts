@@ -84,7 +84,7 @@ export const CLASSES: readonly ClassDef[] = [
       vintage: 'Wither',
       aeration: 'Echo',
     },
-    specialtyBarType: 'cocktail',
+    specialtyBarType: 'wine',
   },
   {
     id: 'shaker',
@@ -110,7 +110,7 @@ export const CLASSES: readonly ClassDef[] = [
       stirred: 'Feint',
       garnish: 'Riposte',
     },
-    specialtyBarType: 'sports',
+    specialtyBarType: 'cocktail',
   },
   {
     id: 'orchardist',
@@ -188,7 +188,7 @@ export const CLASSES: readonly ClassDef[] = [
       cards: 'Cards (Combos)',
       house: 'House (Edge)',
     },
-    specialtyBarType: 'speakeasy',
+    specialtyBarType: 'pub',
   },
 ] as const;
 

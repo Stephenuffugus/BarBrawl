@@ -52,15 +52,17 @@ export interface ResourceDef {
   generationRule: string;
 }
 
-// Bar types mirror spec §5.7 mastery tracks.
+// Bar types mirror the DB CHECK constraint in supabase/migrations/
+// 20260421000002_core_tables.sql (bars.type). Keep this enum and the
+// CHECK constraint in sync — adding a type requires a migration.
 export type BarType =
   | 'dive'
-  | 'nightclub'
-  | 'cocktail'
+  | 'pub'
   | 'sports'
-  | 'speakeasy'
+  | 'cocktail'
+  | 'wine'
   | 'brewery'
-  | 'craft';
+  | 'nightclub';
 
 export type Specialty = BarType | 'universal';
 

@@ -45,11 +45,26 @@ class (Summoner deferred to post-launch class expansion).
   - Pure `rollItem()` with injected RNG. Distribution tested to spec §5.9
     (60/27/9/3/1) within ±0.5% over 100k rolls.
 - `src/gating/` — Metroidvania gating:
-  - 8 damage types, mapped per bar theme
+  - 8 damage types, mapped per bar theme (reconciled with DB's 7 bar types)
   - 7 resistance marks (one per damage type)
   - 7 VIP keys (one per bar theme)
   - `canSurviveTier`, `canEnterVIPRoom`, `barThemeUnlocked` pure resolvers
-- **86 unit tests pass** across 5 suites. Root `pnpm -r typecheck` clean.
+- `src/character/` — `createLevel1Character`, `createStarterRoster`,
+  `toRuntime`. Produces DB row shapes + in-memory runtime with per-level
+  stat scaling from spec §5.6.
+- `src/combat/` — **Turn engine SKELETON**. Has: `BattleState` types,
+  `initBattle`, `applyPlayerAction` (basic_attack + flee + consumable
+  log), `advanceTurn` with basic enemy AI, `endBattle`. Skills currently
+  fall back to basic-attack math because node `effect` fields are
+  display-only text — see memory `project_skill_effects_open.md` for
+  the structured-action follow-up plan.
+- **104 unit tests pass** across 7 suites. Root `pnpm -r typecheck` clean.
+
+**Supabase additions:**
+- `supabase/migrations/20260423000001_add_gambler_class.sql` — extends
+  the `characters.class_id` CHECK constraint to allow 'gambler'.
+- `supabase/seed.sql` — 15 mock bars across NYC, SF, Austin covering
+  all 7 bar types. Applied by `supabase db reset`.
 
 **CI lint is broken (pre-existing, not my changes).** `apps/mobile`
 ships `eslint ^9.0.0` but keeps legacy `.eslintrc.js`; ESLint 9 requires
@@ -162,21 +177,22 @@ When you come back to this project, answer these and we can move:
 
 **Immediate next-turn work queue (all portable, path A):**
 
-1. **Bar seed file** — 10-20 mock bars with types/themes across 2-3 test
-   cities in `supabase/seed.sql`. Unblocks local Supabase resets + map work.
-2. **Combat state machine** — turn engine in Deno/Edge Functions consuming
-   game-core: `POST /battle/action` interprets effect payloads, applies
-   damage, resolves resource generation, advances turn.
-3. **Character bootstrap logic** — given a user_id + class_id, produce a
-   level-1 character row. Starting stats = class.baseStats. Include
-   initial resource + no gear.
-4. **Item CRUD on Supabase** — `items` table migration + RLS (account-bound
-   column, chain_asset_id nullable). `rollItem()` called from
-   `POST /battle/end` on boss kill.
-5. **Open raid stubs** (post-Phase-7, defer) — data model only: raid
-   lobbies table, participant roster, personal-loot rolls.
+1. **Structured skill effects** — open design question per memory
+   `project_skill_effects_open.md`. Need user sign-off on SkillAction
+   schema before back-filling the 42 active/keystone nodes with typed
+   action data. This unblocks the combat engine's skill branch.
+2. **Status effects + cooldowns + resources in combat** — depends on #1.
+   Tick-down in advanceTurn, apply/resolve in applyPlayerAction.
+3. **Items table migration + RLS** — `items` table with `bound_to_user_id`
+   and `chain_asset_id` columns (schema-forward for blockchain hook
+   without committing). `rollItem()` wired into `POST /battle/end`.
+4. **Edge function skeletons** — Deno stubs for `/battle/start`,
+   `/battle/action`, `/battle/end`, `/defender/station` wrapping game-core.
+5. **Open raid stubs** (post-Phase-7) — data model only.
+6. **Fix mobile lint** — downgrade eslint 9 → 8.57 OR migrate to flat config.
 
-If you just say "keep going," I'll default to #1 (seed) then #2 (combat).
+If you just say "keep going," I'll default to #3 (items migration) which
+doesn't need a design decision.
 
 ## How to drop back in with Claude
 

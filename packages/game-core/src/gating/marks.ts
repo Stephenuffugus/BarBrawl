@@ -73,13 +73,13 @@ export const RESISTANCE_MARK_BY_ID: Readonly<Record<string, ResistanceMark>> =
 // speakeasy, etc.
 
 export const VIP_KEYS: readonly VIPKey[] = Object.freeze([
-  { id: 'key_dive',      name: 'Back-Door Key',    forBarTheme: 'dive',      consumeOnUse: true, description: 'Opens the VIP basement at any dive.' },
-  { id: 'key_nightclub', name: 'VIP Wristband',    forBarTheme: 'nightclub', consumeOnUse: true, description: 'Gets you past the rope at any club.' },
+  { id: 'key_dive',      name: 'Back-Door Key',    forBarTheme: 'dive',      consumeOnUse: true, description: 'Opens the basement at any dive.' },
+  { id: 'key_pub',       name: 'Local\'s Nod',     forBarTheme: 'pub',       consumeOnUse: true, description: 'The snug in the back becomes yours.' },
+  { id: 'key_sports',    name: 'Owner\'s Token',   forBarTheme: 'sports',    consumeOnUse: true, description: "The owner's booth. Behind the scoreboard." },
   { id: 'key_cocktail',  name: 'Unmarked Menu',    forBarTheme: 'cocktail',  consumeOnUse: true, description: 'The back-bar list is yours tonight.' },
-  { id: 'key_sports',    name: 'Owner\'s Token',   forBarTheme: 'sports',    consumeOnUse: true, description: 'The owner\'s booth. Behind the scoreboard.' },
-  { id: 'key_speakeasy', name: 'Password Token',   forBarTheme: 'speakeasy', consumeOnUse: true, description: 'Whisper at the door. They\'ll know.' },
-  { id: 'key_brewery',   name: 'Brewer\'s Cask',   forBarTheme: 'brewery',   consumeOnUse: true, description: 'The reserve cellar opens for you.' },
-  { id: 'key_craft',     name: 'Glassblower\'s Seal', forBarTheme: 'craft',  consumeOnUse: true, description: 'The workshop-back bar admits you.' },
+  { id: 'key_wine',      name: 'Reserve Card',     forBarTheme: 'wine',      consumeOnUse: true, description: 'The private cellar door unlocks.' },
+  { id: 'key_brewery',   name: "Brewer's Cask",    forBarTheme: 'brewery',   consumeOnUse: true, description: 'The reserve cellar opens for you.' },
+  { id: 'key_nightclub', name: 'VIP Wristband',    forBarTheme: 'nightclub', consumeOnUse: true, description: 'Past the rope at any club.' },
 ]);
 
 export const VIP_KEY_BY_BAR_THEME: Readonly<Record<BarType, VIPKey>> = Object.freeze(
