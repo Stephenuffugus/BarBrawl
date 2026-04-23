@@ -7,7 +7,7 @@
 
 **Phase 0 complete** (commit `968e9d5`). Scaffold is live:
 
-- Monorepo: pnpm workspace, `apps/mobile` + `supabase/`
+- Monorepo: pnpm workspace, `apps/mobile` + `supabase/` + `packages/game-core`
 - Mobile: Expo SDK 52, TS strict, expo-router, theme tokens ported,
   spec §8 deps declared, EAS profiles defined
 - DB: PostGIS + all core tables + RLS policies from spec §8,
@@ -16,9 +16,47 @@
 - Docs: spec, quickstart, prototype source, map-integration notes,
   `SETUP.md` with external-account checklist
 
-**Nothing is running yet.** No `pnpm install` has been done, no
-Supabase project created, no Mapbox token, no EAS init. Those are all
-listed in `SETUP.md` and deferred until the user has capital.
+**Design Proposal v1 landed (uncommitted).** `docs/design/DESIGN_V1.md`
+is the diff against the spec covering: reskinned 7-class roster (alcohol
+theming dropped — memory `feedback_no_alcohol_typing.md`), PoE/D2/Borderlands
+hybrid affix loot system, Metroidvania gear-gating via resistance marks + VIP
+keys, Helldivers-style open-raid beacons (deferred to v1.5), and a "no
+blockchain for launch" position with Back Bar Market in-game trading.
+User signed off on all four load-bearing decisions. Gambler added as 7th
+class (Summoner deferred to post-launch class expansion).
+
+**`packages/game-core` is live and fully populated.** What's ported:
+
+- `src/types.ts` — Class / Resource / ActionEconomy / SkillNode typed
+- `src/classes.ts` — All 7 classes (Operator, Bouncer, Hexwright, Duelist,
+  Medic, Ghost, Gambler) with new names, preserved DB IDs and stat spreads,
+  distinct resource + action-economy per class
+- `src/math/damage.ts` — spec §5.3 damage formula, pure, RNG injected
+- `src/math/xp.ts` — spec §5.6 XP curve + level-up gains + applyXp
+- `src/trees/` — **All 21 trees fully ported** (189 nodes). Drink-theme
+  flavor stripped. Gambler's 3 trees are brand-new content (Dice/Cards/
+  House). Node IDs preserved for DB stability.
+- `src/loot/` — Full affix generator:
+  - 26 item bases across weapon/outfit/footwear/trinket, each with an
+    implicit mod that defines its identity
+  - Tiered affix pool: 20 concepts × 4 tiers = 80 affixes, gated by ilvl
+  - 21 class anointments (3 per class) each referencing a real skill-tree
+    node — Legendary-only "build items" (Borderlands BL3 pattern)
+  - Pure `rollItem()` with injected RNG. Distribution tested to spec §5.9
+    (60/27/9/3/1) within ±0.5% over 100k rolls.
+- `src/gating/` — Metroidvania gating:
+  - 8 damage types, mapped per bar theme
+  - 7 resistance marks (one per damage type)
+  - 7 VIP keys (one per bar theme)
+  - `canSurviveTier`, `canEnterVIPRoom`, `barThemeUnlocked` pure resolvers
+- **86 unit tests pass** across 5 suites. Root `pnpm -r typecheck` clean.
+
+**CI lint is broken (pre-existing, not my changes).** `apps/mobile`
+ships `eslint ^9.0.0` but keeps legacy `.eslintrc.js`; ESLint 9 requires
+flat-config `eslint.config.js`. `pnpm -r typecheck` and `pnpm -r test`
+both pass. Fix options: (a) downgrade to `eslint ^8.57` + matching
+`@typescript-eslint ^7`, or (b) migrate mobile to `eslint.config.js`
+flat config. Small scope, not touched without user say-so.
 
 ## Open decisions (blocking non-trivial work)
 
@@ -100,9 +138,9 @@ decision. Recommended starting point when resuming.
 - [x] Phase 0: Project Setup
 - [ ] Phase 1: Auth & Character Creation — **blocked** on Supabase project
 - [ ] Phase 2: Map View with Mock Bars — **blocked** on distribution decision
-- [ ] Phase 3: Skill Trees — **unblocked** via path A above
-- [ ] Phase 4: Single-Player Combat — **partially unblocked** via path A (server logic + math)
-- [ ] Phase 5: Rewards, XP & Loot — **unblocked** via path A
+- [x] Phase 3: Skill Trees — **data layer complete** (21 trees, 189 nodes). UI TBD.
+- [ ] Phase 4: Single-Player Combat — **math + data ported**; combat state machine TBD
+- [x] Phase 5: Rewards, XP & Loot — **generator complete** (affixes, anointments, rollItem). Endpoint wiring TBD.
 - [ ] Phase 6: Real Bars via Google Places — blocked on Google Cloud + cost
 - [ ] Phase 7: Defender System — depends on Phase 4
 - [ ] Phase 8: Consumables & Stash
@@ -119,11 +157,26 @@ When you come back to this project, answer these and we can move:
 
 1. **Distribution target?** Native only / web only / both / still TBD?
 2. **Ready to run `SETUP.md` checklist?** (Mostly blocked on capital.)
-3. **Which path from §"Recommended next steps" should I take?** A (portable), B (native), C (web)?
+3. **Commit the uncommitted work?** (pnpm-lock, design doc, game-core.)
+4. **Fix the broken mobile lint?** Downgrade to eslint 8 is the minimal fix.
 
-If you just say "keep going," I'll default to **path A** —
-distribution-agnostic game-core + tests. That's the work most likely
-to still be useful no matter which direction we commit to.
+**Immediate next-turn work queue (all portable, path A):**
+
+1. **Bar seed file** — 10-20 mock bars with types/themes across 2-3 test
+   cities in `supabase/seed.sql`. Unblocks local Supabase resets + map work.
+2. **Combat state machine** — turn engine in Deno/Edge Functions consuming
+   game-core: `POST /battle/action` interprets effect payloads, applies
+   damage, resolves resource generation, advances turn.
+3. **Character bootstrap logic** — given a user_id + class_id, produce a
+   level-1 character row. Starting stats = class.baseStats. Include
+   initial resource + no gear.
+4. **Item CRUD on Supabase** — `items` table migration + RLS (account-bound
+   column, chain_asset_id nullable). `rollItem()` called from
+   `POST /battle/end` on boss kill.
+5. **Open raid stubs** (post-Phase-7, defer) — data model only: raid
+   lobbies table, participant roster, personal-loot rolls.
+
+If you just say "keep going," I'll default to #1 (seed) then #2 (combat).
 
 ## How to drop back in with Claude
 
