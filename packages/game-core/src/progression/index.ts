@@ -12,3 +12,16 @@ export {
   scaleRewards,
   isFirstConquer,
 } from './daily-refresh';
+export {
+  DEFENDER_RULES,
+  stationAsDefender,
+  decayDefender,
+  accrueCoins,
+  awardPassiveXP,
+  canStationAnother,
+  recallCooldownExpired,
+  collapseDefender,
+  type DefenderSnapshot,
+  type StationOptions,
+  type DefenderReturnPayload,
+} from './defender';

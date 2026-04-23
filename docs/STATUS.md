@@ -89,11 +89,14 @@ class (Summoner deferred to post-launch class expansion).
   (heal_pct, buff_self, cleanse, auto_revive). Auto-revive on defeat
   triggers when HP would hit 0, restores to hpPct of maxHp, consumes
   the marker (once per battle).
-- `src/progression/` — spec §5.7 bar-type mastery bonuses. 4 tiers
-  (1/5/15/30 conquers) adding +HP/ATK/DEF. Folded into `toRuntime`
-  base stats so they persist across battles. Also spec §1.6 daily-
-  refresh reward scaling (1st clear 1.0x, 2nd 0.5x, 3rd+ 0.25x) with
-  timezone-aware `clearNumberToday` + first-conquer detector.
+- `src/progression/` —
+  - spec §5.7 bar-type mastery bonuses (4 tiers, folded into `toRuntime`)
+  - spec §1.6 daily-refresh reward scaling (1.0/0.5/0.25x by clear
+    number, timezone-aware)
+  - spec §5.5 defender system: `stationAsDefender`, `decayDefender`
+    (5% max HP/day), `accrueCoins` (2/hr, 75/day account cap),
+    `awardPassiveXP` (15% of attacker), `collapseDefender` payout,
+    recall cooldown + max-7-per-account enforcement.
 - **Class-specific action economies wired**:
   - Bouncer `absorb`: consume turn → bank +1 action next turn (enemy
     gets a free swing while Bouncer winds up).
@@ -102,7 +105,7 @@ class (Summoner deferred to post-launch class expansion).
     bonus action (streak resets on any non-perfect).
   - `advanceTurn` checks counters before passing to the next actor;
     player stays active while `bonus_actions_pending` > 0.
-- **199 unit tests pass** across 16 suites. Root `pnpm -r typecheck` +
+- **217 unit tests pass** across 17 suites. Root `pnpm -r typecheck` +
   `pnpm -r lint` + `pnpm -r test` all green.
 
 **Supabase additions:**
@@ -213,6 +216,7 @@ decision. Recommended starting point when resuming.
 - [x] Phase 3: Skill Trees — **data layer complete** (21 trees, 189 nodes, 146 passives + 43 active actions). UI TBD.
 - [x] Phase 4: Single-Player Combat — **engine complete** (SkillAction dispatch, passives, keystone hooks, status, cooldowns, resources, consumables, auto-revive). UI + rhythm input wiring TBD.
 - [x] Phase 5: Rewards, XP & Loot — **generator + items table complete**. Endpoint wiring TBD.
+- [x] Phase 7: Defender System — **logic complete** (station, decay, coins, XP, recall). Edge function + UI TBD.
 - [x] Phase 8: Consumables — **catalog + resolver complete**. Stash/pack UI TBD.
 - [ ] Phase 6: Real Bars via Google Places — blocked on Google Cloud + cost
 - [ ] Phase 7: Defender System — depends on Phase 4
@@ -235,22 +239,24 @@ When you come back to this project, answer these and we can move:
 
 **Immediate next-turn work queue (all portable, path A):**
 
-1. **Defender snapshot logic** — spec §5.5. `stationAsDefender(character, barId)`
-   produces the DB row shape for the defenders table. Also `simulateDecay`
-   for HP loss over time + passive XP award on being attacked.
-2. **Rhythm UI + input wiring** — client-side: rhythm bar animation,
+1. **Rhythm UI + input wiring** — client-side: rhythm bar animation,
    tap detection, RhythmQuality classification. Mobile/web split.
-3. **First edge function deployed end-to-end** — pick one (character-
+   Needs the distribution-target decision.
+2. **First edge function deployed end-to-end** — pick one (character-
    create is simplest), wire `supabase/functions/import_map.json`,
-   deploy, smoke-test.
-4. **Daily quest system** — spec §5.6 mentions 3 rotating daily quests
+   deploy, smoke-test. Blocked on Supabase project.
+3. **Daily quest system** — spec §5.6 mentions 3 rotating daily quests
    awarding 25-150 XP each. Pure generator + completion detector.
-5. **Consumables crafting** — combine N rare loot items into a consumable
+4. **Consumables crafting** — combine N rare loot items into a consumable
    (spec §5.8 sources mention crafting).
+5. **Bar room procgen** — spec §5.4. Daily 3-5 rooms from bar's pool
+   using (bar_id, date) seed. Already sketched in prototype; port to
+   game-core as a pure function.
 6. **Open raid stubs** (post-Phase-7) — data model only, deferred.
 
-If you just say "keep going," I'll default to #1 (defender snapshots) —
-closes Phase 7 readiness.
+The logic layer of the game is now largely complete. The gates are
+distribution-target, Supabase project (both blocked on user/capital),
+and client UI work.
 
 ## How to drop back in with Claude
 
