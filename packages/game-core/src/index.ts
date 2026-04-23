@@ -28,6 +28,9 @@ export * as Combat from './combat';
 export * as Consumables from './consumables';
 export * as Progression from './progression';
 export * as Bars from './bars';
+export * as Events from './events';
+export * as Geo from './geo';
+export * as Social from './social';
 export {
   createLevel1Character,
   createStarterRoster,
