@@ -7,24 +7,39 @@ it, leave a defender, earn while you sleep.
 > **Resuming work?** Read [`docs/STATUS.md`](docs/STATUS.md) first —
 > it tracks current phase, open decisions, and recommended next steps.
 >
-> **Design is locked.** See [`docs/BARBRAWL_SPEC.md`](docs/BARBRAWL_SPEC.md)
-> for the complete spec. Non-negotiable principles live in §1 of
-> that document and govern every implementation choice.
+> **Want the big picture?** [`docs/GAME_OVERVIEW.md`](docs/GAME_OVERVIEW.md)
+> is a readable tour of every system, designed to be read on a phone.
+>
+> **Full spec.** [`docs/BARBRAWL_SPEC.md`](docs/BARBRAWL_SPEC.md) has
+> every granular detail. Non-negotiable principles live in §1 of that
+> document and govern every implementation choice.
+>
+> **Design decisions.** [`docs/design/DESIGN_V1.md`](docs/design/DESIGN_V1.md)
+> is the record for the class reskin, loot affix system, Metroid
+> gating, and no-blockchain-for-launch position.
 
 ## Repo layout
 
 ```
 apps/
-  mobile/         React Native + Expo client (the game)
+  mobile/               React Native + Expo client (the game)
+packages/
+  game-core/            Pure, platform-agnostic game logic (classes,
+                        trees, combat, loot, gating, progression,
+                        events — all 356 tests live here).
 supabase/
-  migrations/     Postgres 16 + PostGIS schema
-  functions/      Deno Edge Functions (server-authoritative game logic)
+  migrations/           Postgres 16 + PostGIS schema
+  functions/            Deno Edge Functions (server-authoritative)
+  seed.sql              15 mock bars across NYC/SF/Austin for local dev
 docs/
-  BARBRAWL_SPEC.md          Full design + technical spec
-  CLAUDE_QUICKSTART.md      How to work with Claude Code on this repo
-  prototype/                Reference v6 web prototype (source of truth for content)
-  references/               External research notes (map integration, etc.)
-.github/workflows/ci.yml    Lint + typecheck + test on every PR
+  GAME_OVERVIEW.md      Readable game tour
+  STATUS.md             Current state + pickup pointer
+  BARBRAWL_SPEC.md      Full design + technical spec
+  design/DESIGN_V1.md   Design decision record
+  CLAUDE_QUICKSTART.md  How to work with Claude Code on this repo
+  prototype/            Reference v6 web prototype (source of truth for content)
+  references/           External research notes (map integration, etc.)
+.github/workflows/ci.yml  Lint + typecheck + test on every PR
 ```
 
 ## Getting started
@@ -55,7 +70,8 @@ commit) scaffolds the repo. Phase 1 is auth + character creation.
 ## Principles (never compromise)
 
 1. Zero pay-to-win — cosmetics only, forever.
-2. Drinking is optional — the Steady class is equally viable.
+2. Drinking is optional — The Operator (universal specialty) is
+   equally viable for sober players / DDs / recovery.
 3. Any character can attempt any bar.
 4. Bars are fixed identities; enemies scale to the player.
 5. Power comes from depth, not underleveled enemies.
