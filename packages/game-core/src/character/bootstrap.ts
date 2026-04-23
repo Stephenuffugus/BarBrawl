@@ -4,6 +4,7 @@
 
 import type { ClassId, ResourceKind } from '../types';
 import { getClass } from '../classes';
+import { masteryBonuses } from '../progression/mastery';
 
 /**
  * Shape of a row to be INSERTed into public.characters. Mirrors the DB
@@ -82,11 +83,13 @@ export function toRuntime(
   const level = row.level;
   const b = cls.baseStats;
   const gain = Math.max(0, level - 1);
+  // Mastery bonuses fold into base stats before level gains.
+  const m = masteryBonuses(row.mastery);
   const stats = overrides.stats ?? {
-    hp: b.hp + gain * 6,
-    maxHp: b.hp + gain * 6,
-    atk: b.atk + gain * 2,
-    def: b.def + gain * 1,
+    hp: b.hp + gain * 6 + m.hp,
+    maxHp: b.hp + gain * 6 + m.hp,
+    atk: b.atk + gain * 2 + m.atk,
+    def: b.def + gain * 1 + m.def,
     spd: b.spd + gain * 0.5,
     luck: b.luck,
   };

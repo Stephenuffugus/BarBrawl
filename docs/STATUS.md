@@ -79,7 +79,20 @@ class (Summoner deferred to post-launch class expansion).
   - Passives are consumed live in `deriveEffectiveStats` during every
     hit — conditional effects (Fresh Shift HP>80%, Cornered HP<30%,
     Read Room 2+ enemies) re-evaluate each swing.
-- **149 unit tests pass** across 10 suites. Root `pnpm -r typecheck` +
+  - **6 keystone combat hooks** fire during attack resolution:
+    BROKEN BOTTLE auto-applies Bleed every hit, THIRD STRIKE forces
+    crit every 3rd attack, Opening Strike crits the first hit of
+    battle, Bullseye ignores 50% DEF on crit, OUTBREAK converts
+    direct damage to 3-turn poison, vs-status-dmg multipliers
+    (Analyze +10% vs marked, Marked For Pain +25% vs cursed).
+- `src/consumables/` — spec §5.8 catalog (7 items) + in-combat resolver
+  (heal_pct, buff_self, cleanse, auto_revive). Auto-revive on defeat
+  triggers when HP would hit 0, restores to hpPct of maxHp, consumes
+  the marker (once per battle).
+- `src/progression/` — spec §5.7 bar-type mastery bonuses. 4 tiers
+  (1/5/15/30 conquers) adding +HP/ATK/DEF. Folded into `toRuntime`
+  base stats so they persist across battles.
+- **181 unit tests pass** across 14 suites. Root `pnpm -r typecheck` +
   `pnpm -r lint` + `pnpm -r test` all green.
 
 **Supabase additions:**
@@ -187,9 +200,10 @@ decision. Recommended starting point when resuming.
 - [x] Phase 0: Project Setup
 - [ ] Phase 1: Auth & Character Creation — **bootstrap logic done**; blocked on Supabase project for table writes
 - [ ] Phase 2: Map View with Mock Bars — **data (seed) done**; blocked on distribution decision for map lib
-- [x] Phase 3: Skill Trees — **data layer complete** (21 trees, 189 nodes). UI TBD.
-- [x] Phase 4: Single-Player Combat — **engine complete** (SkillAction dispatch, status, cooldowns, resources). UI + rhythm input wiring TBD.
+- [x] Phase 3: Skill Trees — **data layer complete** (21 trees, 189 nodes, 146 passives + 43 active actions). UI TBD.
+- [x] Phase 4: Single-Player Combat — **engine complete** (SkillAction dispatch, passives, keystone hooks, status, cooldowns, resources, consumables, auto-revive). UI + rhythm input wiring TBD.
 - [x] Phase 5: Rewards, XP & Loot — **generator + items table complete**. Endpoint wiring TBD.
+- [x] Phase 8: Consumables — **catalog + resolver complete**. Stash/pack UI TBD.
 - [ ] Phase 6: Real Bars via Google Places — blocked on Google Cloud + cost
 - [ ] Phase 7: Defender System — depends on Phase 4
 - [ ] Phase 8: Consumables & Stash
@@ -211,28 +225,25 @@ When you come back to this project, answer these and we can move:
 
 **Immediate next-turn work queue (all portable, path A):**
 
-1. **Consumables** — spec §5.8 catalog: consumable types + in-battle
-   effects (heals, buffs, DoT application). Pick item bases from the
-   loot system or author separately.
-2. **Auto-status-on-hit keystone hooks** — BROKEN BOTTLE applies Bleed
-   on every hit, OUTBREAK converts damage to DoT, HAZE-style global
-   statuses. Currently stored as PassiveEffect but not wired to
-   applyStatuses on each hit. Similar for every_nth_crit (THIRD STRIKE)
-   and first_hit_crit (Opening Strike) — engine needs a tracker.
-3. **Rhythm UI + input wiring** — client-side: rhythm bar animation,
+1. **Class-specific action economies** — Bouncer absorb-to-bank (skip
+   turn for +1 action next turn), Duelist perfect-chain-bonus (3rd
+   consecutive perfect = free half-action), Ghost SPD-trade half-
+   action. Adds `absorb` + `spd_trade` PlayerAction kinds + a
+   `bonus_actions_pending` counter.
+2. **Rhythm UI + input wiring** — client-side: rhythm bar animation,
    tap detection, RhythmQuality classification. Mobile/web split.
-4. **First edge function deployed end-to-end** — pick one (character-
+3. **First edge function deployed end-to-end** — pick one (character-
    create is simplest), wire `supabase/functions/import_map.json`,
    deploy, smoke-test.
-5. **Mastery bonuses** — spec §5.7 tier rewards layered onto character
-   stats as additional passives.
+4. **First-conquer + daily-refresh tracking** — spec §1.6 "daily
+   refresh." Track per-bar per-player first-clear state for 2x XP
+   and unique rewards.
+5. **Consumables crafting** — combine N rare loot items into a consumable
+   (spec §5.8 sources mention crafting).
 6. **Open raid stubs** (post-Phase-7) — data model only, deferred.
-7. **Real class action-economy hooks** — Bouncer absorb-to-bank, Ghost
-   SPD-trade half-action, Duelist 3-perfect-bonus action. Currently
-   types declare them but combat engine doesn't implement.
 
-If you just say "keep going," I'll default to #2 (keystone hooks) — it's
-the last load-bearing combat gap and unblocks real playtest-ability.
+If you just say "keep going," I'll default to #1 (action economies) — it
+closes the last combat-design-gap.
 
 ## How to drop back in with Claude
 

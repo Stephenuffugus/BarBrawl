@@ -8,6 +8,7 @@ import { applyStatuses, tickStatuses, deriveEffectiveStats, logStatusTick } from
 import { gainFromEvent, gainFromDamage, clampResource, rulesFor } from './resources';
 import { foldPassives } from './passive-resolver';
 import { computeHookAdjustments, classifyTargetStatus } from './keystone-hooks';
+import { getConsumable } from '../consumables';
 import type { ClassId } from '../types';
 
 // ─── helpers ─────────────────────────────────────────────────────────
@@ -222,8 +223,22 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
     text: `${actor.name} ${prefix} ${target.name} for ${finalDamage}${opts.rhythm === 'perfect' ? ' (perfect!)' : ''}`,
   };
 
-  const newHp = Math.max(0, target.stats.hp - finalDamage);
+  let newHp = Math.max(0, target.stats.hp - finalDamage);
+  let revived = false;
+  // Auto-revive check: only applies to players with the pending marker.
+  if (newHp === 0 && target.kind === 'player') {
+    const revivePending = target.counters?.['revive_pending_hp'];
+    if (revivePending && revivePending > 0) {
+      newHp = revivePending;
+      revived = true;
+    }
+  }
   let nextTarget: Combatant = { ...target, stats: { ...target.stats, hp: newHp } };
+  if (revived) {
+    // Consume the marker.
+    const { revive_pending_hp: _consumed, ...rest } = nextTarget.counters ?? {};
+    nextTarget = { ...nextTarget, counters: rest };
+  }
   if (opts.statusOnHit && opts.statusOnHit.length > 0 && newHp > 0) {
     nextTarget = applyStatuses(nextTarget, opts.statusOnHit);
   }
@@ -269,6 +284,14 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
       log: appendLog(working, {
         turn: state.turn, actorId: target.id, kind: 'defeat',
         text: `${target.name} is defeated.`,
+      }),
+    };
+  } else if (revived) {
+    working = {
+      ...working,
+      log: appendLog(working, {
+        turn: state.turn, actorId: target.id, kind: 'info',
+        text: `${target.name} is saved by Emergency Elixir (${newHp} HP).`,
       }),
     };
   }
@@ -629,13 +652,8 @@ export function applyPlayerAction(
   }
 
   if (action.kind === 'consumable') {
-    return {
-      ...state,
-      log: appendLog(state, {
-        turn: state.turn, actorId: actor.id, kind: 'consumable',
-        text: `${actor.name} uses ${action.consumableId ?? 'a consumable'}. (effect pending)`,
-      }),
-    };
+    if (!action.consumableId) throw new RangeError('consumable requires consumableId');
+    return applyConsumable(state, actorIdx, action.consumableId);
   }
 
   if (action.kind === 'skill') {
@@ -732,6 +750,62 @@ export function endBattle(
     log: appendLog(state, {
       turn: state.turn, actorId: 'system', kind: 'info',
       text: `Battle ended: ${state.result ?? 'unresolved'}.`,
+    }),
+  };
+}
+
+// ─── Consumable resolver ────────────────────────────────────────────
+
+function applyConsumable(state: BattleState, actorIdx: number, consumableId: string): BattleState {
+  const actor = state.combatants[actorIdx]!;
+  const def = getConsumable(consumableId);
+  const e = def.effect;
+  let nextActor: Combatant = actor;
+  let text = `${actor.name} uses ${def.name}.`;
+
+  switch (e.kind) {
+    case 'heal_pct': {
+      const amount = Math.floor(actor.stats.maxHp * e.pct);
+      const newHp = Math.min(actor.stats.maxHp, actor.stats.hp + amount);
+      nextActor = { ...actor, stats: { ...actor.stats, hp: newHp } };
+      text = `${actor.name} uses ${def.name} and heals for ${amount}.`;
+      break;
+    }
+    case 'buff_self': {
+      const tag = e.stat === 'atk' ? 'buff_atk'
+                : e.stat === 'def' ? 'buff_def'
+                : 'buff_crit';
+      nextActor = applyStatuses(actor, [{ tag, turns: e.turns, magnitude: e.pct }]);
+      text = `${actor.name} uses ${def.name} (+${e.pct}% ${e.stat} for ${e.turns} turns).`;
+      break;
+    }
+    case 'cleanse': {
+      nextActor = { ...actor, statusEffects: actor.statusEffects.filter((s) =>
+        s.tag === 'buff_atk' || s.tag === 'buff_def') };
+      text = `${actor.name} uses ${def.name} and cleanses debuffs.`;
+      break;
+    }
+    case 'auto_revive': {
+      // Store as a counter (clean, unambiguous). resolveSingleAttack reads
+      // counters.revive_pending_hp on defeat and restores the combatant.
+      const reviveTo = Math.floor(actor.stats.maxHp * e.hpPct);
+      nextActor = {
+        ...actor,
+        counters: {
+          ...(actor.counters ?? {}),
+          revive_pending_hp: reviveTo,
+        },
+      };
+      text = `${actor.name} uses ${def.name} (revive prepared for ${reviveTo} HP).`;
+      break;
+    }
+  }
+
+  return {
+    ...state,
+    combatants: replaceAt(state.combatants, actorIdx, nextActor),
+    log: appendLog(state, {
+      turn: state.turn, actorId: actor.id, kind: 'consumable', text,
     }),
   };
 }

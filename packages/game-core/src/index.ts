@@ -25,6 +25,8 @@ export {
 export * as Loot from './loot';
 export * as Gating from './gating';
 export * as Combat from './combat';
+export * as Consumables from './consumables';
+export * as Progression from './progression';
 export {
   createLevel1Character,
   createStarterRoster,
