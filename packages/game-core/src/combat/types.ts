@@ -69,7 +69,11 @@ export interface BattleLogEntry {
   kind: 'attack' | 'skill' | 'status' | 'consumable' | 'flee' | 'defeat' | 'info';
 }
 
-export type PlayerActionKind = 'skill' | 'basic_attack' | 'consumable' | 'flee';
+export type PlayerActionKind =
+  | 'skill' | 'basic_attack' | 'consumable' | 'flee'
+  // Class-specific action economy extensions:
+  | 'absorb'     // Bouncer: consume turn, bank +1 action next time active
+  | 'spd_trade'; // Ghost:   spend current SPD for an immediate bonus action
 
 export interface PlayerAction {
   kind: PlayerActionKind;

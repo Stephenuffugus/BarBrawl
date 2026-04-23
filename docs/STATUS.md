@@ -91,8 +91,18 @@ class (Summoner deferred to post-launch class expansion).
   the marker (once per battle).
 - `src/progression/` — spec §5.7 bar-type mastery bonuses. 4 tiers
   (1/5/15/30 conquers) adding +HP/ATK/DEF. Folded into `toRuntime`
-  base stats so they persist across battles.
-- **181 unit tests pass** across 14 suites. Root `pnpm -r typecheck` +
+  base stats so they persist across battles. Also spec §1.6 daily-
+  refresh reward scaling (1st clear 1.0x, 2nd 0.5x, 3rd+ 0.25x) with
+  timezone-aware `clearNumberToday` + first-conquer detector.
+- **Class-specific action economies wired**:
+  - Bouncer `absorb`: consume turn → bank +1 action next turn (enemy
+    gets a free swing while Bouncer winds up).
+  - Ghost `spd_trade`: halve current SPD for an immediate bonus action.
+  - Duelist 3-perfect streak: consecutive perfect-rhythm hits bank a
+    bonus action (streak resets on any non-perfect).
+  - `advanceTurn` checks counters before passing to the next actor;
+    player stays active while `bonus_actions_pending` > 0.
+- **199 unit tests pass** across 16 suites. Root `pnpm -r typecheck` +
   `pnpm -r lint` + `pnpm -r test` all green.
 
 **Supabase additions:**
@@ -225,25 +235,22 @@ When you come back to this project, answer these and we can move:
 
 **Immediate next-turn work queue (all portable, path A):**
 
-1. **Class-specific action economies** — Bouncer absorb-to-bank (skip
-   turn for +1 action next turn), Duelist perfect-chain-bonus (3rd
-   consecutive perfect = free half-action), Ghost SPD-trade half-
-   action. Adds `absorb` + `spd_trade` PlayerAction kinds + a
-   `bonus_actions_pending` counter.
+1. **Defender snapshot logic** — spec §5.5. `stationAsDefender(character, barId)`
+   produces the DB row shape for the defenders table. Also `simulateDecay`
+   for HP loss over time + passive XP award on being attacked.
 2. **Rhythm UI + input wiring** — client-side: rhythm bar animation,
    tap detection, RhythmQuality classification. Mobile/web split.
 3. **First edge function deployed end-to-end** — pick one (character-
    create is simplest), wire `supabase/functions/import_map.json`,
    deploy, smoke-test.
-4. **First-conquer + daily-refresh tracking** — spec §1.6 "daily
-   refresh." Track per-bar per-player first-clear state for 2x XP
-   and unique rewards.
+4. **Daily quest system** — spec §5.6 mentions 3 rotating daily quests
+   awarding 25-150 XP each. Pure generator + completion detector.
 5. **Consumables crafting** — combine N rare loot items into a consumable
    (spec §5.8 sources mention crafting).
 6. **Open raid stubs** (post-Phase-7) — data model only, deferred.
 
-If you just say "keep going," I'll default to #1 (action economies) — it
-closes the last combat-design-gap.
+If you just say "keep going," I'll default to #1 (defender snapshots) —
+closes Phase 7 readiness.
 
 ## How to drop back in with Claude
 

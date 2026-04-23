@@ -251,13 +251,28 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
     log: appendLog(state, entry),
   };
 
-  // Bump attacks_landed counter on the attacker.
+  // Bump attacks_landed counter on the attacker + track perfect streak.
+  const currentActor = working.combatants[opts.actorIdx]!;
+  const prevPerfectStreak = currentActor.counters?.['perfect_streak'] ?? 0;
+  const nextPerfectStreak = opts.rhythm === 'perfect' ? prevPerfectStreak + 1 : 0;
+
+  // Duelist bonus: 3 consecutive perfects grants +1 bonus action on the
+  // next turn (action_economy.kind = 'perfect-bonus'). Reset streak on grant.
+  let bonusBank = currentActor.counters?.['bonus_actions_pending'] ?? 0;
+  let streakToStore = nextPerfectStreak;
+  if (currentActor.classId === 'shaker' && nextPerfectStreak >= 3) {
+    bonusBank += 1;
+    streakToStore = 0;
+  }
+
   const bumpedActor: Combatant = {
-    ...working.combatants[opts.actorIdx]!,
+    ...currentActor,
     counters: {
-      ...(working.combatants[opts.actorIdx]!.counters ?? {}),
+      ...(currentActor.counters ?? {}),
       attacks_landed: attacksLanded + 1,
-      ...(res.crit ? { crits_landed: (working.combatants[opts.actorIdx]!.counters?.['crits_landed'] ?? 0) + 1 } : {}),
+      ...(res.crit ? { crits_landed: (currentActor.counters?.['crits_landed'] ?? 0) + 1 } : {}),
+      perfect_streak: streakToStore,
+      ...(bonusBank > 0 ? { bonus_actions_pending: bonusBank } : {}),
     },
   };
   working = { ...working, combatants: replaceAt(working.combatants, opts.actorIdx, bumpedActor) };
@@ -656,6 +671,54 @@ export function applyPlayerAction(
     return applyConsumable(state, actorIdx, action.consumableId);
   }
 
+  if (action.kind === 'absorb') {
+    // Bouncer: skip offensive action, bank +1 action for NEXT turn. Turn
+    // passes to the next combatant immediately — enemy gets a swing while
+    // the Bouncer winds up. Bonus will fire when the player wraps back.
+    const a = state.combatants[actorIdx]!;
+    const next: Combatant = {
+      ...a,
+      counters: {
+        ...(a.counters ?? {}),
+        bonus_actions_pending: (a.counters?.['bonus_actions_pending'] ?? 0) + 1,
+      },
+    };
+    const stateWithBank: BattleState = {
+      ...state,
+      combatants: replaceAt(state.combatants, actorIdx, next),
+      log: appendLog(state, {
+        turn: state.turn, actorId: a.id, kind: 'info',
+        text: `${a.name} braces — will retaliate with 2 actions next turn.`,
+      }),
+    };
+    // Advance to the next combatant so the player's turn actually ends.
+    const nextIdx = advanceIndex(stateWithBank);
+    return { ...stateWithBank, activeCombatantIndex: nextIdx };
+  }
+
+  if (action.kind === 'spd_trade') {
+    // Ghost: convert current SPD into an immediate bonus action. Halves
+    // remaining SPD this battle (applied as stacking debuff).
+    const a = state.combatants[actorIdx]!;
+    const halved = Math.floor(a.stats.spd / 2);
+    const withBonus: Combatant = {
+      ...a,
+      stats: { ...a.stats, spd: halved },
+      counters: {
+        ...(a.counters ?? {}),
+        immediate_bonus_action: (a.counters?.['immediate_bonus_action'] ?? 0) + 1,
+      },
+    };
+    return {
+      ...state,
+      combatants: replaceAt(state.combatants, actorIdx, withBonus),
+      log: appendLog(state, {
+        turn: state.turn, actorId: a.id, kind: 'info',
+        text: `${a.name} trades SPD for a bonus action.`,
+      }),
+    };
+  }
+
   if (action.kind === 'skill') {
     if (!action.skillNodeId) throw new RangeError('skill action requires skillNodeId');
     if (!action.targetId) throw new RangeError('skill action requires targetId');
@@ -690,6 +753,30 @@ export function applyPlayerAction(
 
 export function advanceTurn(state: BattleState, opts: ApplyOptions): BattleState {
   if (state.result) return state;
+
+  // Bonus action: if the CURRENT (not next) actor has a banked bonus action
+  // or an immediate (SPD-trade) bonus, they retain the turn. Decrement the
+  // counter; don't advance.
+  const current = state.combatants[state.activeCombatantIndex]!;
+  if (current.kind === 'player') {
+    const immediate = current.counters?.['immediate_bonus_action'] ?? 0;
+    const banked = current.counters?.['bonus_actions_pending'] ?? 0;
+    if (immediate > 0 || banked > 0) {
+      const consumed = immediate > 0 ? 'immediate_bonus_action' : 'bonus_actions_pending';
+      const counters = { ...(current.counters ?? {}) };
+      counters[consumed] = (counters[consumed] ?? 1) - 1;
+      if (counters[consumed]! <= 0) delete counters[consumed];
+      return {
+        ...state,
+        combatants: replaceAt(state.combatants, state.activeCombatantIndex, { ...current, counters }),
+        log: appendLog(state, {
+          turn: state.turn, actorId: current.id, kind: 'info',
+          text: `${current.name} takes a bonus action.`,
+        }),
+      };
+    }
+  }
+
   const nextIdx = advanceIndex(state);
   const nextActor = state.combatants[nextIdx]!;
 
