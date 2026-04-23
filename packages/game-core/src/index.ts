@@ -22,6 +22,15 @@ export {
   type ProgressState,
   type ProgressResult,
 } from './math/xp';
+export {
+  RHYTHM_WINDOW_MS,
+  RHYTHM_ZONES,
+  classifyRhythmTap,
+  classifyWithLenience,
+  adjustZones,
+  type RhythmResult,
+  type LenienceAdjusted,
+} from './math/rhythm';
 export * as Loot from './loot';
 export * as Gating from './gating';
 export * as Combat from './combat';
