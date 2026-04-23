@@ -1,5 +1,6 @@
 import type { Combatant, StatusEffect, BattleLogEntry, BattleState } from './types';
 import type { AppliedStatus, StatusEffectTag } from './skill-schema';
+import { foldPassives, applyModifier, type PassiveContext } from './passive-resolver';
 
 // Status effect resolution. Two entry points:
 //   - applyStatuses(target, applied[], turn) → new Combatant with new statuses
@@ -94,8 +95,30 @@ export function tickStatuses(c: Combatant): TickResult {
   return { combatant, dotDamage, stunActive, expired };
 }
 
-/** Sum buff/debuff magnitudes into an effective stat view. */
-export function deriveEffectiveStats(c: Combatant): Combatant['stats'] {
+/**
+ * Compute effective stats:
+ *   1. Start with base stats from the Combatant.
+ *   2. Apply PASSIVE_EFFECTS from allocatedNodes (conditional on hpPct,
+ *      enemyCount, level, etc).
+ *   3. Layer active status-effect buffs/debuffs on top.
+ */
+export function deriveEffectiveStats(
+  c: Combatant,
+  ctx: Partial<PassiveContext> = {},
+): Combatant['stats'] {
+  // Step 1-2: passives.
+  const passiveCtx: PassiveContext = {
+    hpPct: c.stats.maxHp > 0 ? c.stats.hp / c.stats.maxHp : 1,
+    enemyCount: ctx.enemyCount ?? 1,
+    ...(c.level !== undefined ? { level: c.level } : {}),
+    ...(ctx.hasCurse !== undefined ? { hasCurse: ctx.hasCurse } : {}),
+    ...(ctx.hasMark !== undefined ? { hasMark: ctx.hasMark } : {}),
+    ...(ctx.stunned !== undefined ? { stunned: ctx.stunned } : {}),
+  };
+  const passiveMod = foldPassives(c.allocatedNodes ?? [], passiveCtx);
+  const afterPassives = applyModifier(c.stats, passiveMod);
+
+  // Step 3: status buffs/debuffs.
   let atkBuff = 0;
   let defBuff = 0;
   let defDebuff = 0;
@@ -104,10 +127,10 @@ export function deriveEffectiveStats(c: Combatant): Combatant['stats'] {
     if (s.tag === 'buff_def')   defBuff   += s.magnitude;
     if (s.tag === 'debuff_def') defDebuff += s.magnitude;
   }
-  const atk = Math.floor(c.stats.atk * (1 + atkBuff / 100));
-  const defBase = c.stats.def * (1 + defBuff / 100);
+  const atk = Math.floor(afterPassives.atk * (1 + atkBuff / 100));
+  const defBase = afterPassives.def * (1 + defBuff / 100);
   const def = Math.max(0, Math.floor(defBase * (1 - defDebuff / 100)));
-  return { ...c.stats, atk, def };
+  return { ...afterPassives, atk, def };
 }
 
 /** Logs status ticks on a state, mutating log. */

@@ -68,7 +68,18 @@ class (Summoner deferred to post-launch class expansion).
   - Per-class resource generation rules (Focus/Grit/Curse Stacks/Tempo/
     Reserve/Momentum/Chips) triggered on turn_start, crit, action,
     damage_taken, perfect_rhythm, dodge, overheal.
-- **125 unit tests pass** across 8 suites. Root `pnpm -r typecheck` +
+  - **Full passive-effect system**: 146 non-active nodes (smalls,
+    notables, passive keystones) mapped to structured `PassiveEffect`
+    data. Resolver folds flat + pct stats, per-level scaling,
+    conditional modifiers (HP thresholds, enemy count, curse state),
+    crit overrides (allCrit / noCrit / critMultOverride), dmg-taken
+    reductions, immunities, revive-once, HP floor. Keystones apply
+    their balance companion (fo_9 -40% ATK, ho_9 -20% DEF, hu_9 -20%
+    other-stats, etc.) automatically.
+  - Passives are consumed live in `deriveEffectiveStats` during every
+    hit — conditional effects (Fresh Shift HP>80%, Cornered HP<30%,
+    Read Room 2+ enemies) re-evaluate each swing.
+- **149 unit tests pass** across 10 suites. Root `pnpm -r typecheck` +
   `pnpm -r lint` + `pnpm -r test` all green.
 
 **Supabase additions:**
@@ -200,27 +211,28 @@ When you come back to this project, answer these and we can move:
 
 **Immediate next-turn work queue (all portable, path A):**
 
-1. **Passive-effect resolution** — the `allocated_nodes` array on
-   characters tells us what the player has chosen, but passive effects
-   (Fixed Gaze +4% crit, Seasoned +25% DEF, Grounded +5 DEF, etc.) are
-   not yet applied to effective stats. Build `passive-effects.ts`
-   interpreter and hook into `deriveEffectiveStats`. ~145 nodes to
-   annotate with structured passive data.
-2. **Passive keystones** — HAZE, IMMOVABLE, CLARITY ABSOLUTE, etc.
-   Most are global battle modifiers (crit-only, dmg-taken-reduction,
-   all-hits-apply-status). Should live alongside the passive system.
-3. **Consumables** — define consumable item types + in-battle effects.
-   Spec §5.8 has the catalog.
-4. **Rhythm UI + input wiring** — client-side: the rhythm bar animation,
+1. **Consumables** — spec §5.8 catalog: consumable types + in-battle
+   effects (heals, buffs, DoT application). Pick item bases from the
+   loot system or author separately.
+2. **Auto-status-on-hit keystone hooks** — BROKEN BOTTLE applies Bleed
+   on every hit, OUTBREAK converts damage to DoT, HAZE-style global
+   statuses. Currently stored as PassiveEffect but not wired to
+   applyStatuses on each hit. Similar for every_nth_crit (THIRD STRIKE)
+   and first_hit_crit (Opening Strike) — engine needs a tracker.
+3. **Rhythm UI + input wiring** — client-side: rhythm bar animation,
    tap detection, RhythmQuality classification. Mobile/web split.
-5. **First edge function deployed end-to-end** — pick one (character-
-   create is simplest), wire the import_map.json, deploy, smoke-test.
+4. **First edge function deployed end-to-end** — pick one (character-
+   create is simplest), wire `supabase/functions/import_map.json`,
+   deploy, smoke-test.
+5. **Mastery bonuses** — spec §5.7 tier rewards layered onto character
+   stats as additional passives.
 6. **Open raid stubs** (post-Phase-7) — data model only, deferred.
-7. **Passive mastery bonuses** — spec §5.7 tier rewards layered onto
-   character stats as passive buffs.
+7. **Real class action-economy hooks** — Bouncer absorb-to-bank, Ghost
+   SPD-trade half-action, Duelist 3-perfect-bonus action. Currently
+   types declare them but combat engine doesn't implement.
 
-If you just say "keep going," I'll default to #1 (passive effects) since
-it blocks actual builds working correctly in combat.
+If you just say "keep going," I'll default to #2 (keystone hooks) — it's
+the last load-bearing combat gap and unblocks real playtest-ability.
 
 ## How to drop back in with Claude
 

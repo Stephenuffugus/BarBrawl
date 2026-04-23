@@ -33,5 +33,13 @@ export { initBattle, scaleEnemyStats, playerCombatant, enemyCombatant,
          type EnemyTemplate, type InitBattleOptions } from './init';
 export { applyPlayerAction, advanceTurn, endBattle, type ApplyOptions } from './turn';
 export { SKILL_ACTIONS, skillActionFor, isActiveable } from './skill-actions';
+export { PASSIVE_EFFECTS, passiveFor, hasPassive } from './passive-effects';
+export {
+  foldPassives,
+  applyModifier,
+  applyPassives,
+  type StatModifier,
+  type PassiveContext,
+} from './passive-resolver';
 export * from './skill-schema';
 export { CLASS_RESOURCE_RULES, rulesFor } from './resources';

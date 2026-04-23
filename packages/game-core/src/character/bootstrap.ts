@@ -2,7 +2,7 @@
 // matches the characters table schema (supabase migration 20260421000002).
 // Pure — returns data; caller does the DB INSERT.
 
-import type { ClassId } from '../types';
+import type { ClassId, ResourceKind } from '../types';
 import { getClass } from '../classes';
 
 /**
@@ -35,7 +35,7 @@ export interface CharacterRuntime {
   level: number;
   xp: number;
   stats: { hp: number; maxHp: number; atk: number; def: number; spd: number; luck: number };
-  resource: { kind: string; current: number; cap: number };
+  resource: { kind: ResourceKind; current: number; cap: number };
   allocatedNodes: readonly string[];
   barsWon: number;
   mastery: Readonly<Record<string, number>>;

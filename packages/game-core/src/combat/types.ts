@@ -44,11 +44,16 @@ export interface Combatant {
   kind: CombatantKind;
   name: string;
   classId?: ClassId;
+  /** Character level (for per-level-scaling passives). */
+  level?: number;
+  /** Base stats — pre-passive, pre-status. */
   stats: CombatStats;
   resource?: CombatResource;
   statusEffects: readonly StatusEffect[];
   /** Node IDs of up to 3 equipped active skills. */
   skillsEquipped?: readonly string[];
+  /** All allocated tree nodes — feeds the passive resolver. */
+  allocatedNodes?: readonly string[];
   /** Remaining cooldown turns, keyed by node ID. */
   cooldowns?: Readonly<Record<string, number>>;
   /** For enemies: crude AI profile. Extend as AI matures. */

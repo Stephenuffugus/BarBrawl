@@ -36,16 +36,21 @@ export function scaleEnemyStats(
 }
 
 export function playerCombatant(rt: CharacterRuntime, idOverride?: string): Combatant {
-  return {
+  const base: Combatant = {
     id: idOverride ?? `player:${rt.userId}:${rt.classId}`,
     kind: 'player',
     name: rt.name,
     classId: rt.classId,
+    level: rt.level,
     stats: { ...rt.stats },
-    resource: rt.resource ? { ...rt.resource } : undefined,
     statusEffects: [],
+    allocatedNodes: rt.allocatedNodes,
     cooldowns: {},
-  } as Combatant;
+  };
+  if (rt.resource) {
+    return { ...base, resource: { ...rt.resource } };
+  }
+  return base;
 }
 
 export function enemyCombatant(

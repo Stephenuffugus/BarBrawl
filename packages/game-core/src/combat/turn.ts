@@ -6,6 +6,7 @@ import { computeDamage, type RhythmQuality } from '../math/damage';
 import { skillActionFor } from './skill-actions';
 import { applyStatuses, tickStatuses, deriveEffectiveStats, logStatusTick } from './status';
 import { gainFromEvent, gainFromDamage, clampResource, rulesFor } from './resources';
+import { foldPassives } from './passive-resolver';
 import type { ClassId } from '../types';
 
 // ─── helpers ─────────────────────────────────────────────────────────
@@ -135,13 +136,30 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
   const target = state.combatants[opts.targetIdx]!;
   if (target.stats.hp <= 0) return state; // target already dead, skip
 
-  const actorEff = deriveEffectiveStats(actor);
-  const targetEff = deriveEffectiveStats(target);
+  // Passive-modifier aware effective stats.
+  const enemyCount = state.combatants.filter(
+    (c) => (c.kind === 'enemy' || c.kind === 'boss') && c.stats.hp > 0,
+  ).length;
+  const actorEff = deriveEffectiveStats(actor, { enemyCount });
+  const targetEff = deriveEffectiveStats(target, { enemyCount });
   const defAfterIgnore = Math.max(0, targetEff.def * (1 - (opts.defIgnore ?? 0)));
   const variance = Math.floor((opts.rng() - 0.5) * 10);
 
-  // Crit: guaranteed or rolled.
-  const critRng = opts.guaranteedCrit ? () => 0 : opts.rng;
+  // Pull actor's passive keystones to adjust crit behavior.
+  const actorMod = foldPassives(actor.allocatedNodes ?? [], {
+    hpPct: actor.stats.maxHp > 0 ? actor.stats.hp / actor.stats.maxHp : 1,
+    enemyCount,
+    ...(actor.level !== undefined ? { level: actor.level } : {}),
+  });
+
+  // Crit policy: allCrit > guaranteedCrit > noCrit > default roll.
+  let critBuff = 0;
+  if (actorMod.allCrit) critBuff = 1;
+  else if (opts.guaranteedCrit) critBuff = 1;
+  else if (actorMod.noCrit) critBuff = -1;
+  const critMult = actorMod.critMultOverride ?? opts.critMultiplierOverride;
+
+  const critRng = (opts.guaranteedCrit || actorMod.allCrit) ? () => 0 : opts.rng;
   const res = computeDamage({
     attackerAtk: actorEff.atk,
     attackerLevel: 1,
@@ -150,18 +168,27 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
     rhythm: opts.rhythm,
     defenderDef: defAfterIgnore,
     variance,
-    critBuff: opts.guaranteedCrit ? 1 : 0,
-    ...(opts.critMultiplierOverride !== undefined ? { critMultiplier: opts.critMultiplierOverride } : {}),
+    critBuff,
+    ...(critMult !== undefined ? { critMultiplier: critMult } : {}),
     rng: critRng,
   });
+
+  // Apply dmg_taken passive pct reduction to the target.
+  const targetMod = foldPassives(target.allocatedNodes ?? [], {
+    hpPct: target.stats.maxHp > 0 ? target.stats.hp / target.stats.maxHp : 1,
+    enemyCount,
+    ...(target.level !== undefined ? { level: target.level } : {}),
+  });
+  const damageTakenMult = 1 + targetMod.dmgTakenPct / 100;
+  const finalDamage = Math.max(1, Math.floor(res.damage * damageTakenMult));
 
   const prefix = opts.labelPrefix ?? (res.crit ? 'CRITS' : 'hits');
   const entry: BattleLogEntry = {
     turn: state.turn, actorId: actor.id, kind: 'skill',
-    text: `${actor.name} ${prefix} ${target.name} for ${res.damage}${opts.rhythm === 'perfect' ? ' (perfect!)' : ''}`,
+    text: `${actor.name} ${prefix} ${target.name} for ${finalDamage}${opts.rhythm === 'perfect' ? ' (perfect!)' : ''}`,
   };
 
-  const newHp = Math.max(0, target.stats.hp - res.damage);
+  const newHp = Math.max(0, target.stats.hp - finalDamage);
   let nextTarget: Combatant = { ...target, stats: { ...target.stats, hp: newHp } };
   if (opts.statusOnHit && opts.statusOnHit.length > 0 && newHp > 0) {
     nextTarget = applyStatuses(nextTarget, opts.statusOnHit);
@@ -182,9 +209,9 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
   }
 
   // Resource gain on target (for damage-taken classes like Bouncer).
-  if (res.damage > 0) {
+  if (finalDamage > 0) {
     const t = working.combatants[opts.targetIdx]!;
-    const withGrit = resourceGainFromDamage(t, res.damage);
+    const withGrit = resourceGainFromDamage(t, finalDamage);
     working = { ...working, combatants: replaceAt(working.combatants, opts.targetIdx, withGrit) };
   }
 

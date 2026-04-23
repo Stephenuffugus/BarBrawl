@@ -171,14 +171,69 @@ export type SkillAction =
     };
 
 /** Passive effects applied continuously while the node is allocated. */
+export type PassiveStatKind =
+  | 'atk' | 'def' | 'hp' | 'spd' | 'luck'
+  | 'crit_chance' | 'crit_dmg' | 'crit_mult'
+  | 'dodge' | 'dmg_taken' | 'skill_mult'
+  | 'regen' | 'xp' | 'gold'
+  | 'magic_dmg'       // Hexwright magic-dmg stat
+  | 'status_chance'   // chance to apply DoTs/debuffs on hit
+  | 'buff_duration'   // extend buff durations
+  | 'debuff_duration' // extend debuff durations
+  | 'heals_received'  // + heal received multiplier
+  | 'dot_dmg'         // +% DoT damage
+  | 'atk_speed'       // +% attack speed
+  | 'enemy_miss'      // +% chance enemies miss
+  | 'enemy_accuracy_down'; // -% enemy accuracy (= enemy_miss-ish)
+
 export type PassiveEffect =
+  // Flat stat bump.
   | { kind: 'flat_stat'; stat: 'atk' | 'def' | 'hp' | 'spd' | 'luck'; value: number }
-  | { kind: 'pct_stat'; stat: 'atk' | 'def' | 'hp' | 'spd' | 'luck' | 'crit_dmg' | 'dmg_taken' | 'skill_mult' | 'crit_chance' | 'dodge' | 'regen' | 'xp' | 'gold'; value: number }
-  | { kind: 'conditional_pct_stat'; stat: 'atk' | 'def'; value: number; condition: 'hp_above_80' | 'hp_below_30' | 'enemy_count_gte_2' }
+  // Percent bump of any stat.
+  | { kind: 'pct_stat'; stat: PassiveStatKind; value: number }
+  // Conditional pct stat (HP-gated or enemy-count-gated).
+  | { kind: 'conditional_pct_stat'; stat: 'atk' | 'def' | 'all_stats' | 'hp_regen'; value: number;
+      condition: 'hp_above_80' | 'hp_below_30' | 'enemy_count_gte_2' | 'while_cursed' | 'while_marked' | 'stunned_can_regen_no' }
+  // Override the crit damage multiplier globally.
   | { kind: 'crit_mult_override'; value: number }
+  // Immunity flags.
   | { kind: 'immunity'; to: 'debuffs' | 'knockback' | 'dots' }
+  // Prevent defeat once per battle by flooring HP at `floor`.
   | { kind: 'hp_floor'; floor: number; oncePerBattle?: boolean }
-  | { kind: 'revive_once'; hpPct: number; goldPenaltyPct?: number };
+  // Revive once with hpPct HP (ETERNAL HARVEST / CODE BLUE).
+  | { kind: 'revive_once'; hpPct: number; goldPenaltyPct?: number }
+  // Scale stat per N levels (e.g. Old Vines +3% per 10 levels).
+  | { kind: 'per_level_scaling'; stat: 'all_stats' | 'atk' | 'def'; valuePerN: number; nLevels: number }
+  // Damage bonus against enemies with a specific status.
+  | { kind: 'vs_status_dmg'; tag: 'mark' | 'curse' | 'bleed' | 'burn' | 'poison' | 'slow' | 'stun'; value: number }
+  // Crits ignore a fraction of defender DEF.
+  | { kind: 'crit_def_ignore'; value: number }
+  // On-hit apply: every attack applies a status. HAZE-style keystone.
+  | { kind: 'auto_status_on_hit'; tag: 'bleed' | 'burn' | 'poison' | 'slow'; turns: number; magnitude: number }
+  // All hits crit (for ABSOLUTE CLARITY — pairs with -ATK for balance).
+  | { kind: 'all_crit' }
+  // Cannot crit (WORLD TREE, IMMOVABLE).
+  | { kind: 'no_crit' }
+  // Every Nth attack auto-crits; non-crits scaled by penalty (THIRD STRIKE, NEGRONI).
+  | { kind: 'every_nth_crit'; n: number; nonCritPenalty: number }
+  // First attack of each battle crits (Opening Strike).
+  | { kind: 'first_hit_crit' }
+  // HP cap as pct of max (FOAM GHOST: HP capped 50%).
+  | { kind: 'hp_cap_pct'; pct: number }
+  // Convert all direct damage to DoT equivalent (PLAGUE CIDER / OUTBREAK).
+  | { kind: 'convert_to_dot'; directScale: number }
+  // Reduce all cooldowns by pct.
+  | { kind: 'cooldown_reduction'; pct: number }
+  // Enemy debuff: all enemies slowed by X (QUIET ROOM, COUCH LOCKED).
+  | { kind: 'all_enemies_slowed'; pct: number; selfSpdPenalty: number }
+  // After a specific event, next attack has a modifier (Follow-Through, Rinse).
+  | { kind: 'after_event_buff'; event: 'crit' | 'dodge'; statBuff: 'atk' | 'crit_chance'; value: number; turns: number }
+  // Apply a storage mechanic (Hoarded Power: store N turn bonuses).
+  | { kind: 'reserve_storage'; maxStacks: number }
+  // Forbid consumables (PERFECT RECALL).
+  | { kind: 'forbid_consumables' }
+  // Random keystone each battle (WILD RIDE).
+  | { kind: 'random_keystone' };
 
 /** Class-specific resource generation event triggers. */
 export type ResourceGenEvent =
