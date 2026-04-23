@@ -105,7 +105,27 @@ class (Summoner deferred to post-launch class expansion).
     bonus action (streak resets on any non-perfect).
   - `advanceTurn` checks counters before passing to the next actor;
     player stays active while `bonus_actions_pending` > 0.
-- **217 unit tests pass** across 17 suites. Root `pnpm -r typecheck` +
+- `src/bars/` — spec §5.4 daily 3-5 room procgen from ROOMS_BY_TYPE
+  catalog, seeded deterministically by (bar_id, dateKey).
+- `src/events/` — Weekly world bosses (Titans with 48h window,
+  contribution-tier rewards), daily login streaks with milestone
+  rewards at 3/7/14/30 days, seasonal challenges with multiplicative
+  XP/gold effect stacking (renamed "Sober October" → "Operator's Month"
+  to match class reskin), Crawl Pass 50-tier XP progression.
+- `src/geo/` — Haversine distance, `isWithinRadius` (spec §8.2 100m
+  default), `nearbyBars`, GPS-fix validity check. Pattern matches
+  Lucid Winds per memory.
+- `src/social/` — Leaderboards: rank, regional grouping, top-N tier
+  badges, paginated lookup, user-rank-in-region.
+- `src/consumables/crafting.ts` — 8 recipes for consumable crafting.
+  tryCraft picks lowest-ilvl components to protect player's best gear.
+- `src/progression/quests.ts` — 14-quest daily catalog; seeded daily
+  rotation per user; threshold + accumulator quest kinds.
+- `src/progression/respec.ts` — `level² gold` cost formula, token
+  grants every 10 levels; typed errors for insufficient funds.
+- `src/progression/battle-summary.ts` — translates finalized
+  `BattleState` → `BattleSummary` for quest progress hooks.
+- **338 unit tests pass** across 27 suites. Root `pnpm -r typecheck` +
   `pnpm -r lint` + `pnpm -r test` all green.
 
 **Supabase additions:**
@@ -126,12 +146,9 @@ class (Summoner deferred to post-launch class expansion).
   from `^8` to `^7.18` to restore legacy `.eslintrc.js` support. Lint
   now passes workspace-wide.
 
-**CI lint is broken (pre-existing, not my changes).** `apps/mobile`
-ships `eslint ^9.0.0` but keeps legacy `.eslintrc.js`; ESLint 9 requires
-flat-config `eslint.config.js`. `pnpm -r typecheck` and `pnpm -r test`
-both pass. Fix options: (a) downgrade to `eslint ^8.57` + matching
-`@typescript-eslint ^7`, or (b) migrate mobile to `eslint.config.js`
-flat config. Small scope, not touched without user say-so.
+**CI lint fixed.** eslint was downgraded from ^9 to ^8.57 with matching
+@typescript-eslint ^7.18 — mobile's legacy `.eslintrc.js` now works and
+`pnpm -r lint` passes workspace-wide.
 
 ## Open decisions (blocking non-trivial work)
 
@@ -219,12 +236,12 @@ decision. Recommended starting point when resuming.
 - [x] Phase 7: Defender System — **logic complete** (station, decay, coins, XP, recall). Edge function + UI TBD.
 - [x] Phase 8: Consumables — **catalog + resolver complete**. Stash/pack UI TBD.
 - [ ] Phase 6: Real Bars via Google Places — blocked on Google Cloud + cost
-- [ ] Phase 7: Defender System — depends on Phase 4
-- [ ] Phase 8: Consumables & Stash
+- [x] Phase 7: Defender System — **logic complete** (station, decay, coins, XP, recall). Edge function + UI TBD.
+- [x] Phase 8: Consumables — **catalog + resolver + crafting complete**. Stash/pack UI TBD.
 - [ ] Phase 9: Cosmetics Shop — blocked on RevenueCat (real money, defer)
-- [ ] Phase 10: Bar Claiming & Owner Dashboard
-- [ ] Phase 11: Social & Leaderboards
-- [ ] Phase 12: Global Events
+- [ ] Phase 10: Bar Claiming & Owner Dashboard — workflow/UI concern
+- [x] Phase 11: Social & Leaderboards — **ranking logic complete**. UI TBD.
+- [x] Phase 12: Global Events — **world boss + seasonal + Crawl Pass math complete**. UI + scheduler TBD.
 - [ ] Phase 13: Polish, Balancing & Beta
 - [ ] Phase 14: Launch
 

@@ -17,3 +17,28 @@ export {
   type LoginReward,
   type LoginRewardKind,
 } from './login-streak';
+export {
+  SEASONAL_TEMPLATES,
+  isChallengeActive,
+  activeChallenges,
+  combinedChallengeEffects,
+  type SeasonalChallenge,
+  type SeasonalModifier,
+  type ChallengeContext,
+  type CombinedMultipliers,
+} from './seasonal';
+export {
+  CRAWL_PASS_RULES,
+  tierFromXp,
+  xpRequiredForTier,
+  progressIntoTier,
+  freshCrawlPass,
+  addCrawlPassXp,
+  canClaimFreeTier,
+  canClaimPremiumTier,
+  claimFreeTier,
+  claimPremiumTier,
+  unlockPremium,
+  type CrawlPassState,
+  type ClaimResult,
+} from './crawl-pass';
