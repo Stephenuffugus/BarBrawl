@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { UI } from '@/design/palette';
+import { playSfx } from '@/audio/sfx';
 import { PixelText } from './PixelText';
 
 export interface MenuItem {
@@ -32,6 +33,7 @@ export function MenuList({ items, cursor, onSelect, onMove }: MenuListProps) {
             key={item.id}
             onPress={() => {
               if (dim) return;
+              playSfx('menu_select');
               onMove?.(idx);
               onSelect(item.id, idx);
             }}

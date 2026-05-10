@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, View } from 'react-native';
 import { UI } from '@/design/palette';
 import { PIXEL } from '@/design/scale';
+import { playSfx } from '@/audio/sfx';
 import { PixelText } from './PixelText';
 import type { Direction } from './PlayerSprite';
 
@@ -20,14 +21,14 @@ export function DPad({ onMove, onAction }: DPadProps) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
       <View style={{ width: BTN_SIZE * 3, height: BTN_SIZE * 3, position: 'relative' }}>
-        <ArrowBtn dir="up"    style={{ left: BTN_SIZE, top: 0 }}        onPress={() => onMove('up')}    />
-        <ArrowBtn dir="left"  style={{ left: 0, top: BTN_SIZE }}        onPress={() => onMove('left')}  />
-        <ArrowBtn dir="right" style={{ left: BTN_SIZE * 2, top: BTN_SIZE }} onPress={() => onMove('right')} />
-        <ArrowBtn dir="down"  style={{ left: BTN_SIZE, top: BTN_SIZE * 2 }} onPress={() => onMove('down')}  />
+        <ArrowBtn dir="up"    style={{ left: BTN_SIZE, top: 0 }}        onPress={() => { playSfx('footstep'); onMove('up'); }}    />
+        <ArrowBtn dir="left"  style={{ left: 0, top: BTN_SIZE }}        onPress={() => { playSfx('footstep'); onMove('left'); }}  />
+        <ArrowBtn dir="right" style={{ left: BTN_SIZE * 2, top: BTN_SIZE }} onPress={() => { playSfx('footstep'); onMove('right'); }} />
+        <ArrowBtn dir="down"  style={{ left: BTN_SIZE, top: BTN_SIZE * 2 }} onPress={() => { playSfx('footstep'); onMove('down'); }}  />
       </View>
       {onAction ? (
         <Pressable
-          onPress={onAction}
+          onPress={() => { playSfx('menu_select'); onAction(); }}
           style={{
             width: BTN_SIZE + 12,
             height: BTN_SIZE + 12,

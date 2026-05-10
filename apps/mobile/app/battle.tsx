@@ -22,6 +22,7 @@ import { RhythmBar } from '@/components/RhythmBar';
 import { SkillPanel } from '@/components/SkillPanel';
 import { ShakeFlash } from '@/components/ShakeFlash';
 import { VictoryFlash } from '@/components/VictoryFlash';
+import { playSfx } from '@/audio/sfx';
 import { SPRITES, type SpriteId } from '@/design/sprites';
 import { UI, CLASS_ACCENT, BAR_PALETTES, type BarThemeId } from '@/design/palette';
 import { PIXEL, BATTLE_LAYOUT } from '@/design/scale';
@@ -138,7 +139,9 @@ export default function BattleScreen() {
       setHitToken((t) => t + 1);
       // Crit detection from log (last entry's text contains 'CRITS').
       const lastEntry = next.log[next.log.length - 1];
-      setLastHitWasCrit(!!lastEntry && /CRITS/.test(lastEntry.text));
+      const wasCrit = !!lastEntry && /CRITS/.test(lastEntry.text);
+      setLastHitWasCrit(wasCrit);
+      playSfx(wasCrit ? 'crit' : 'hit');
     }
 
     // Detect whether the player took a hit during the enemy's response.
@@ -180,6 +183,7 @@ export default function BattleScreen() {
   // Reward minting on victory (XP + gold + loot drop + bar claim).
   useEffect(() => {
     if (result === 'win') {
+      playSfx('victory');
       const t = setTimeout(() => {
         awardXp(demo.classId, 100);
         addGold(50);
@@ -195,6 +199,8 @@ export default function BattleScreen() {
         }
       }, 100);
       return () => clearTimeout(t);
+    } else if (result === 'loss') {
+      playSfx('defeat');
     }
     return undefined;
   }, [result, demo.classId, awardXp, addGold, addItem, claimBar, params.barId, barTheme, barLabel]);

@@ -5,6 +5,7 @@ import {
 } from '@barbrawl/game-core';
 import { UI } from '@/design/palette';
 import { PIXEL } from '@/design/scale';
+import { playSfx } from '@/audio/sfx';
 import { PixelText } from './PixelText';
 
 const HOLD_MS = 450; // post-resolve pause before firing onResolve
@@ -72,6 +73,10 @@ export function RhythmBar({ width = 280, onResolve, caption }: RhythmBarProps) {
     const elapsed = performance.now() - startMs.current;
     const r = classifyRhythmTap(elapsed);
     setResolved(r);
+    playSfx(r.quality === 'perfect' ? 'perfect'
+          : r.quality === 'good'    ? 'good'
+          : r.quality === 'miss'    ? 'miss'
+                                    : 'menu_select');
   }, [resolved]);
 
   const markerLeft = Math.max(0, Math.min(width - PIXEL * 2, pos * width - PIXEL));
