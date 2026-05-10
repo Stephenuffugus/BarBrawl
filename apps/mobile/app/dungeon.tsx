@@ -2,9 +2,10 @@
 // Walking onto an exit door advances to the next room. Final room has a
 // boss tile that triggers /battle.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import type { ClassId } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
 import { DPad } from '@/components/DPad';
@@ -16,6 +17,9 @@ import {
   INTERIOR_PALETTE, findEntry, type InteriorTile,
 } from '@/design/dungeon';
 import { useGameStore } from '@/state/game-store';
+import { playSfx } from '@/audio/sfx';
+
+const PATROL_XP = 25;
 
 const TILE_PX = 28; // 12*28 = 336px, fits a 390-wide phone with margin
 
@@ -24,7 +28,7 @@ function isBarTheme(s: string | undefined): s is BarThemeId {
 }
 
 export default function DungeonScreen() {
-  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string; tier?: string }>();
+  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string; tier?: string; secondary?: string }>();
   const theme: BarThemeId = isBarTheme(params.theme) ? params.theme : 'dive';
   const label = params.label?.trim() || 'A nameless bar';
 
@@ -35,6 +39,9 @@ export default function DungeonScreen() {
   const [row, setRow] = useState(spawn.row);
   const [dir, setDir] = useState<Direction>('right');
   const [step, setStep] = useState(0);
+  const [defeatedPatrols, setDefeatedPatrols] = useState<Set<string>>(new Set());
+  const awardXp = useGameStore((s) => s.awardXp);
+  const activeClassId = useGameStore((s) => s.active().class_id) as ClassId;
 
   // Reset position on room change.
   useEffect(() => {
@@ -56,9 +63,14 @@ export default function DungeonScreen() {
         barId: params.barId ?? '',
         theme, label,
         tier: params.tier ?? '1',
+        ...(params.secondary ? { secondary: params.secondary } : {}),
       },
     });
-  }, [params.barId, params.tier, theme, label]);
+  }, [params.barId, params.tier, params.secondary, theme, label]);
+
+  const isDefeated = useCallback((c: number, r: number) =>
+    defeatedPatrols.has(`${roomIdx}:${c}:${r}`),
+  [defeatedPatrols, roomIdx]);
 
   const tryMove = useCallback((d: Direction) => {
     setDir(d);
@@ -70,17 +82,39 @@ export default function DungeonScreen() {
     const t = room[nr]?.[nc];
     if (!t) return;
     const def = INTERIOR_TILES[t];
-    if (!def.passable) return;
+    // Defeated patrols are walkable.
+    if (!def.passable && !(t === 'patrol' && isDefeated(nc, nr))) return;
     setCol(nc);
     setRow(nr);
     setStep((s) => s + 1);
-    // Apply tile effect.
     if (def.effect === 'advance') {
       setTimeout(advanceRoom, 200);
     } else if (def.effect === 'battle') {
       setTimeout(triggerBattle, 200);
     }
-  }, [col, row, room, advanceRoom, triggerBattle]);
+  }, [col, row, room, advanceRoom, triggerBattle, isDefeated]);
+
+  const adjacentPatrol = useMemo(() => {
+    const around: [number, number][] = [
+      [col, row - 1], [col, row + 1], [col - 1, row], [col + 1, row],
+    ];
+    for (const [c, r] of around) {
+      if (room[r]?.[c] === 'patrol' && !isDefeated(c, r)) return { col: c, row: r };
+    }
+    return null;
+  }, [col, row, room, isDefeated]);
+
+  const onEngage = useCallback(() => {
+    if (!adjacentPatrol) return;
+    const key = `${roomIdx}:${adjacentPatrol.col}:${adjacentPatrol.row}`;
+    setDefeatedPatrols((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+    awardXp(activeClassId, PATROL_XP);
+    playSfx('hit');
+  }, [adjacentPatrol, roomIdx, awardXp, activeClassId]);
 
   // Web keyboard.
   useEffect(() => {
@@ -121,10 +155,11 @@ export default function DungeonScreen() {
           {room.map((rowArr, r) => rowArr.map((tile, c) => (
             <TileView
               key={`${r}-${c}`}
-              tile={tile}
+              tile={tile === 'patrol' && isDefeated(c, r) ? 'floor' : tile}
               col={c}
               row={r}
               palette={palette}
+              isAdjacent={adjacentPatrol?.col === c && adjacentPatrol?.row === r}
             />
           )))}
           {/* Player overlay (animated) */}
@@ -139,15 +174,36 @@ export default function DungeonScreen() {
         </View>
       </View>
 
-      {/* Hint */}
+      {/* Hint / patrol engage */}
       <View style={{ paddingHorizontal: 12, marginBottom: 8 }}>
-        <Panel>
-          <PixelText size={11} color={UI.textDim}>
-            {roomIdx + 1 === ROOM_COUNT
-              ? 'A figure waits in the back. Step onto the gold tile.'
-              : 'Find the door on the right wall. The bar gets meaner the deeper you go.'}
-          </PixelText>
-        </Panel>
+        {adjacentPatrol ? (
+          <Panel style={{ borderColor: UI.hpHalf, borderWidth: PIXEL }}>
+            <PixelText size={11} color={UI.hpHalf}>
+              ▶ A REGULAR BLOCKS YOUR PATH
+            </PixelText>
+            <PixelText size={10} color={UI.textDim} style={{ marginTop: 4 }}>
+              Tap FIGHT to push them aside. +{PATROL_XP} XP.
+            </PixelText>
+            <Pressable
+              onPress={onEngage}
+              style={{
+                alignItems: 'center', paddingVertical: 8, marginTop: 8,
+                borderColor: UI.cursor, borderWidth: PIXEL,
+                backgroundColor: UI.bg,
+              }}
+            >
+              <PixelText size={13} color={UI.cursor}>▶ FIGHT</PixelText>
+            </Pressable>
+          </Panel>
+        ) : (
+          <Panel>
+            <PixelText size={11} color={UI.textDim}>
+              {roomIdx + 1 === ROOM_COUNT
+                ? 'A figure waits in the back. Step onto the gold tile.'
+                : 'Find the door on the right wall. Push past the patrons in your way.'}
+            </PixelText>
+          </Panel>
+        )}
       </View>
 
       {/* DPad */}
@@ -159,12 +215,13 @@ export default function DungeonScreen() {
 }
 
 function TileView({
-  tile, col, row, palette,
+  tile, col, row, palette, isAdjacent,
 }: {
   tile: InteriorTile;
   col: number;
   row: number;
   palette: { floor: string; wall: string; accent: string };
+  isAdjacent?: boolean;
 }) {
   let bg = palette.floor;
   let inset: string | null = null;
@@ -174,6 +231,7 @@ function TileView({
   if (tile === 'entry') { bg = palette.floor; inset = palette.accent; }
   if (tile === 'exit') { bg = palette.accent; inset = '#000'; }
   if (tile === 'boss') { bg = '#f8b800'; inset = '#000'; }
+  if (tile === 'patrol') { bg = palette.floor; inset = '#e63946'; }
 
   return (
     <View
@@ -192,6 +250,13 @@ function TileView({
           left: 4, top: 4, right: 4, bottom: 4,
           backgroundColor: inset,
           opacity: tile === 'wall' ? 0.6 : 1,
+        }} />
+      ) : null}
+      {isAdjacent && tile === 'patrol' ? (
+        <View style={{
+          position: 'absolute', top: -8, left: TILE_PX / 2 - 4,
+          width: 8, height: 8,
+          backgroundColor: UI.cursor,
         }} />
       ) : null}
     </View>
