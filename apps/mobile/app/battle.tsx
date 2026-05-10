@@ -75,6 +75,8 @@ export default function BattleScreen() {
   // Player hit feedback — flashes the player panel and screen edges.
   const [playerHitAt, setPlayerHitAt] = useState(0);
   const [playerHitSeverity, setPlayerHitSeverity] = useState<'light' | 'heavy'>('light');
+  // Attacker pose — brief lunge of player avatar block when attacking.
+  const [attackPoseAt, setAttackPoseAt] = useState(0);
 
   const awardXp = useGameStore((s) => s.awardXp);
   const addItem = useGameStore((s) => s.addItem);
@@ -123,6 +125,7 @@ export default function BattleScreen() {
   const onRhythmResolved = useCallback((rResult: RhythmResult) => {
     if (!pending) return;
     setPhase('resolving');
+    setAttackPoseAt(Date.now());
     const rng = makeRng();
     const action: Combat.PlayerAction = pending.kind === 'skill'
       ? { kind: 'skill', actorId: demo.playerId, targetId: pending.targetId, skillNodeId: pending.skillNodeId!, rhythm: rResult.quality }
@@ -207,6 +210,11 @@ export default function BattleScreen() {
 
   // Time-since-hit drives the screen vignette overlay.
   const playerFlashActive = Date.now() - playerHitAt < 280;
+  const attackPoseActive = Date.now() - attackPoseAt < 350;
+  // Build a subtle theme-tinted backdrop color (palette index 1 — darkest
+  // non-black tone — at low opacity).
+  const themePalette = BAR_PALETTES[barTheme];
+  const backdropColor = themePalette[1];
 
   return (
     <View style={{ flex: 1, backgroundColor: UI.bg, paddingTop: BATTLE_LAYOUT.topPad }}>
@@ -229,7 +237,17 @@ export default function BattleScreen() {
       <View style={{
         height: BATTLE_LAYOUT.enemyAreaHeight,
         alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 12,
+        position: 'relative',
       }}>
+        {/* Theme-tinted backdrop — very subtle radial-feeling rectangle */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute', left: 0, right: 0, top: 0, bottom: 0,
+            backgroundColor: backdropColor,
+            opacity: 0.35,
+          }}
+        />
         <PixelText size={10} color={UI.textDim} style={{ marginBottom: 4 }}>
           {barLabel.toUpperCase()}
         </PixelText>
@@ -249,6 +267,18 @@ export default function BattleScreen() {
             />
           </View>
         </ShakeFlash>
+
+        {/* Attacker indicator — small class-accent block that lunges up
+            when player commits an attack, then settles back. */}
+        <View style={{
+          position: 'absolute',
+          bottom: attackPoseActive ? 80 : 12,
+          left: 16,
+          width: 28, height: 28,
+          backgroundColor: accent,
+          borderColor: '#000', borderWidth: 2,
+          opacity: attackPoseActive ? 1 : 0.6,
+        }} />
       </View>
 
       {/* ── battle log ───────────────────────────────────────── */}

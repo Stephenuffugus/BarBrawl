@@ -1,10 +1,8 @@
-// Stylized Pokemon-town overworld. Player sprite walks tile-by-tile, bars
-// are buildings, walking onto a door (or pressing A while adjacent) routes
-// into the bar's battle. Replaces Mapbox/Leaflet for v1 demo — distribution-
-// agnostic and gives the game its retro identity.
+// Stylized Pokemon-town overworld with a camera that follows the player.
+// 9×7 visible tile viewport, edge-clamped to stay within the map.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
 import { getClass } from '@barbrawl/game-core';
 import { Tilemap } from '@/components/Tilemap';
@@ -19,6 +17,12 @@ import {
 } from '@/design/tiles';
 import { useGameStore } from '@/state/game-store';
 
+const VIEWPORT_COLS = 9;
+const VIEWPORT_ROWS = 7;
+// Camera tile size — slightly smaller than TILE_LOGICAL so 9×7 fits a
+// 390-wide phone with margin.
+const VIEWPORT_TILE = 40;
+
 const SPAWN_COL = 5;
 const SPAWN_ROW = 7;
 
@@ -27,6 +31,52 @@ function asDoor(t: ReturnType<typeof tileAt>) {
   if (!t) return null;
   const def = TILES[t];
   return def.kind === 'door' ? { ...def, tileId: t } : null;
+}
+
+/** Renders a 9×7 tile window of the map centered on the player. */
+function CameraViewport({
+  col, row, dir, step,
+}: { col: number; row: number; dir: Direction; step: number }) {
+  // Camera origin = top-left tile of viewport. Clamp so we don't show
+  // off-map space.
+  const camCol = Math.max(0, Math.min(MAP_COLS - VIEWPORT_COLS, col - Math.floor(VIEWPORT_COLS / 2)));
+  const camRow = Math.max(0, Math.min(MAP_ROWS - VIEWPORT_ROWS, row - Math.floor(VIEWPORT_ROWS / 2)));
+
+  const viewportW = VIEWPORT_COLS * VIEWPORT_TILE;
+  const viewportH = VIEWPORT_ROWS * VIEWPORT_TILE;
+  const tilemapScale = VIEWPORT_TILE / TILE_LOGICAL; // shrinks tilemap to viewport tile size
+
+  return (
+    <View style={{
+      width: viewportW,
+      height: viewportH,
+      borderColor: UI.border, borderWidth: PIXEL,
+      backgroundColor: UI.bg,
+      overflow: 'hidden',
+      position: 'relative',
+    }}>
+      {/* Tilemap shifted by camera origin */}
+      <View style={{
+        position: 'absolute',
+        left: -camCol * VIEWPORT_TILE,
+        top: -camRow * VIEWPORT_TILE,
+        transform: [{ scale: tilemapScale }],
+        transformOrigin: 'top left' as never,
+      }}>
+        <Tilemap />
+      </View>
+      {/* Player rendered relative to camera origin */}
+      <View style={{
+        position: 'absolute',
+        left: (col - camCol) * VIEWPORT_TILE,
+        top: (row - camRow) * VIEWPORT_TILE,
+        width: VIEWPORT_TILE,
+        height: VIEWPORT_TILE,
+      }}>
+        <PlayerSprite col={0} row={0} direction={dir} step={step} tileSize={VIEWPORT_TILE} />
+      </View>
+    </View>
+  );
 }
 
 export default function MapScreen() {
@@ -108,27 +158,13 @@ export default function MapScreen() {
           <PixelText size={12} color={UI.cursor}>◀ BACK</PixelText>
         </Pressable>
         <PixelText size={14} color={UI.text}>WALK THE STREETS</PixelText>
-        <PixelText size={11} color={UI.textDim}>{col},{row}</PixelText>
+        <PixelText size={11} color={UI.textDim}>{claimedById && Object.keys(claimedById).length > 0 ? `${Object.keys(claimedById).length} CLAIMED` : `${col},${row}`}</PixelText>
       </View>
 
-      {/* Map view, scrollable */}
-      <ScrollView
-        contentContainerStyle={{ alignItems: 'center', padding: 12 }}
-        horizontal={false}
-      >
-        <View style={{
-          // Limit display width so a tall map scrolls vertically inside
-          width: MAP_COLS * (TILE_LOGICAL / 2),
-          height: MAP_ROWS * (TILE_LOGICAL / 2),
-          position: 'relative',
-          // Scale the inner Tilemap by 0.5 to fit phone width.
-          transform: [{ scale: 0.5 }],
-          transformOrigin: 'top left' as never,
-        }}>
-          <Tilemap />
-          <PlayerSprite col={col} row={row} direction={dir} step={step} />
-        </View>
-      </ScrollView>
+      {/* Map viewport — camera follows player, edge-clamped */}
+      <View style={{ alignItems: 'center', paddingVertical: 8 }}>
+        <CameraViewport col={col} row={row} dir={dir} step={step} />
+      </View>
 
       {/* Door prompt */}
       <View style={{ paddingHorizontal: 12, marginBottom: 8 }}>
