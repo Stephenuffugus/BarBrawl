@@ -22,6 +22,7 @@ import { RhythmBar } from '@/components/RhythmBar';
 import { SkillPanel } from '@/components/SkillPanel';
 import { ShakeFlash } from '@/components/ShakeFlash';
 import { VictoryFlash } from '@/components/VictoryFlash';
+import { ResourceBar } from '@/components/ResourceBar';
 import { playSfx } from '@/audio/sfx';
 import { SPRITES, type SpriteId } from '@/design/sprites';
 import { UI, CLASS_ACCENT, BAR_PALETTES, type BarThemeId } from '@/design/palette';
@@ -333,11 +334,9 @@ export default function BattleScreen() {
           ) : null}
           <PixelText size={13} color={UI.text}>{player.name}</PixelText>
           <PixelText size={10} color={UI.textDim} style={{ marginBottom: 6 }}>LV {player.level ?? 1}</PixelText>
-          <HpBar hp={player.stats.hp} maxHp={player.stats.maxHp} widthCells={26} />
+          <HpBar hp={player.stats.hp} maxHp={player.stats.maxHp} widthCells={22} />
           {player.resource ? (
-            <PixelText size={10} color={UI.cursor} style={{ marginTop: 6 }}>
-              {player.resource.kind.toUpperCase()} {player.resource.current}/{player.resource.cap}
-            </PixelText>
+            <ResourceBar resource={player.resource} widthCells={22} />
           ) : null}
         </Panel>
 
