@@ -5,6 +5,44 @@
 
 ## Where we are
 
+**Mobile demo is fully wired and playable end-to-end on web.**
+Full loop: Title → Map (walkable Pokemon town with 4 bars) →
+Preview (bar context) → Dungeon (3-room Pokemon-style crawl) →
+Battle (PS1-literal layout + rhythm input + skill panel) → Victory
+flash → Rewards (real loot drop) → Defender placement → back to Map
+(now showing claimed bar with stationed defender).
+
+`apps/mobile/` shipped this session:
+- **Design system** (`src/design/`): GBC palette per bar theme, scale
+  tokens, sprite catalog (32×32 enemies, 48×48 boss), tile catalog +
+  overworld map ASCII layout, dungeon room layouts.
+- **Components** (`src/components/`): PixelGrid (run-length-optimized),
+  PixelText, Panel, HpBar (animated drain), MenuList (with SFX),
+  RhythmBar (1.2s sliding marker, gold/green/red zones, with SFX),
+  SkillPanel, TreeGraph (D2-style with prereq lines), NodeDetailPanel,
+  Tilemap, PlayerSprite (2-frame walk), DPad, ShakeFlash (per-hit
+  jitter + tint), VictoryFlash (gold pulse + sparkles).
+- **Audio** (`src/audio/sfx.ts`): Web Audio synth with 11 patches
+  (menu_move, menu_select, hit, crit, miss, perfect, good, victory,
+  level_up, footstep, defeat). No asset bundle — generates 8-bit tones
+  inline. Lazy AudioContext + auto-resume. Mute toggle persists.
+- **State** (`src/state/`): Zustand persist middleware via
+  portableStorage (localStorage on web, in-memory on native). Holds
+  roster (7 createStarterRoster chars), inventory (real Loot.Item),
+  gold, equipped[classId][slot], claimedBars[], audioMuted. Actions:
+  setActive, allocateNode (capped at level), awardXp, addItem,
+  addGold, equipItem, unequipSlot, claimBar, stationDefender,
+  toggleMuted. effective-stats.ts folds equipped affixes into combat.
+- **Screens** (`app/`): index (title with mute toggle), map (12×18
+  Pokemon overworld, claimed bars get YOURS badge), preview (bar
+  context + boss preview), dungeon (3-room walkable interior, themed
+  per bar), battle (PS1 layout, FIGHT/SKILL/ITEM/RUN, rhythm bar,
+  damage flash + sprite shake + screen vignette on hit, victory flash,
+  reads effective stats), tree (D2 graph with prereq lines, allocate
+  with SP cap), roster (7 classes with stats + equipped slot chips),
+  inventory (rarity-tinted cards, slot filters, EQUIP), rewards (real
+  loot panel, BAR CLAIMED status), defender (pick from 7 to station).
+
 **Phase 0 complete** (commit `968e9d5`). Scaffold is live:
 
 - Monorepo: pnpm workspace, `apps/mobile` + `supabase/` + `packages/game-core`
@@ -269,6 +307,7 @@ decision. Recommended starting point when resuming.
 - [x] Phase 13a: Anti-cheat layer — **HMAC signing, rate limit, GPS spoof, battle validator complete**. Plumbed into edge function prelude.
 - [x] Phase 13b: Edge function bodies — **all 4 wired** (character-create, battle-start, battle-action, battle-end). Deploy-ready pending Supabase project + env (`BB_HMAC_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`).
 - [x] Phase 13c: Bar nomination + owner claim — **logic + DB schema complete**. Submission flow + admin review UI TBD.
+- [x] Phase 13d: Mobile UI demo — **full game loop playable on web**. Title → Map → Preview → Dungeon → Battle → Victory → Rewards → Defender placement → Map. Real game-core engine throughout (rhythm classifier, applyPlayerAction, advanceTurn, applyXp, rollItem). Audio synthesized inline. Persistence via localStorage. Equipment + tree allocations affect combat.
 - [ ] Phase 13: Polish, Balancing & Beta
 - [ ] Phase 14: Launch
 
@@ -286,16 +325,25 @@ additions.
 
 When you pick this back up, consider in this order:
 
-1. **Distribution target decision** — still the load-bearing blocker for
-   UI work. Recommendation on file: web-first (Leaflet/CartoDB), native
-   later. Reasoning in §"Open decisions".
-2. **First edge function deployed end-to-end** — bodies are written and
-   import_map is in place. Smoke-test character-create against a real
-   Supabase project; once it works, the other 3 follow trivially.
-3. **Battle replay viewer** — game-core's deterministic RNG + the new
-   `replayBattle` in security/battle-validator make this nearly free; UI
-   layer needed (blocked on distribution).
-4. **Open raid system** (post-launch v1.5) — design sketch in DESIGN_V1.md.
+1. **Real character + enemy + tile sprite art**. The placeholder
+   PixelGrid sprites work but are abstract. Replacing them with
+   actual Pokemon Red-style 16×16/32×32 art (or AI-assisted first
+   pass with manual cleanup) would visually 10× the demo. Feeds via
+   `apps/mobile/src/design/sprites.ts` and `tiles.ts` strings —
+   change the data, not the components.
+2. **Camera-centered map** — currently the whole 12×18 town is shown
+   at 0.5× scale. A camera that follows the player + scrolls would
+   feel more authentic.
+3. **Battle attack animations** — currently only the *defender*
+   shakes/flashes on hit. The attacker should briefly leap/lunge.
+4. **Distribution target decision** — still the load-bearing blocker
+   for native shipping. Web demo runs as-is; native build needs the
+   audio swap (expo-av + .wav files) and `@react-native-async-storage/
+   async-storage` swap in `state/storage.ts`.
+5. **First edge function deployed end-to-end** — bodies are written
+   and `import_map.json` is in place. Smoke-test character-create
+   against a real Supabase project.
+6. **Open raid system** (post-launch v1.5) — design sketch in DESIGN_V1.md.
 
 Data additions still welcome (more anointments, world-boss tiers,
 quest variants, cosmetics) but not blockers.

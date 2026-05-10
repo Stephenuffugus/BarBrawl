@@ -4,8 +4,10 @@ import { router } from 'expo-router';
 import { UI } from '@/design/palette';
 import { PIXEL } from '@/design/scale';
 import { PixelText } from '@/components/PixelText';
+import { useGameStore } from '@/state/game-store';
 
 export default function Title() {
+  const { audioMuted, toggleMuted } = useGameStore();
   return (
     <View
       style={{
@@ -16,6 +18,21 @@ export default function Title() {
         padding: 24,
       }}
     >
+      {/* Mute toggle, top-right */}
+      <Pressable
+        onPress={toggleMuted}
+        style={{
+          position: 'absolute',
+          top: 32, right: 16,
+          paddingHorizontal: 8, paddingVertical: 6,
+          borderColor: UI.border, borderWidth: 2,
+          backgroundColor: UI.panelFill,
+        }}
+      >
+        <PixelText size={11} color={audioMuted ? UI.textDim : UI.cursor}>
+          {audioMuted ? 'MUTED' : '♪ ON'}
+        </PixelText>
+      </Pressable>
       {/* GBC-style logo block */}
       <View style={{ alignItems: 'center', marginBottom: 56 }}>
         <PixelText size={36} color={UI.cursor} style={{ letterSpacing: 4 }}>

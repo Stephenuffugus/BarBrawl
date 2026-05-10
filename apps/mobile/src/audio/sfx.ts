@@ -62,6 +62,13 @@ let masterGain: GainNode | null = null;
 let muted = false;
 let lastFootstepMs = 0;
 
+/** Hook: subscribe to muted state from the store. Caller wires this once
+ *  at app boot. We keep the store-aware logic OUT of this module to avoid
+ *  a circular dep — caller imports the store separately. */
+export function setSfxMuted(m: boolean): void {
+  muted = m;
+}
+
 function ensureCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   const W = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
@@ -113,10 +120,6 @@ export function playSfx(id: SfxId): void {
   for (const note of patch) {
     playNote(c, masterGain, note, note.startMs ?? 0);
   }
-}
-
-export function setMuted(m: boolean): void {
-  muted = m;
 }
 
 export function isMuted(): boolean {

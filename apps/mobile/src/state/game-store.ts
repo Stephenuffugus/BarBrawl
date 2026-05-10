@@ -40,6 +40,7 @@ export interface GameState {
   /** equipped[classId][slot] → itemId. */
   equipped: Record<string, EquippedSlots>;
   claimedBars: ClaimedBar[];
+  audioMuted: boolean;
 
   // selectors
   active: () => CharacterRow;
@@ -56,6 +57,7 @@ export interface GameState {
   claimBar: (bar: { barId: string; theme: string; label: string }) => void;
   stationDefender: (barId: string, classId: ClassId) => void;
   unstationDefender: (barId: string) => void;
+  toggleMuted: () => void;
   resetDemo: () => void;
 }
 
@@ -80,6 +82,7 @@ export const useGameStore = create<GameState>()(
       activeIdx: 1, // default to Bouncer (index 1)
       equipped: {},
       claimedBars: [],
+      audioMuted: false,
 
       active: () => get().roster[get().activeIdx]!,
       defenderForBar: (barId) => get().claimedBars.find((b) => b.barId === barId),
@@ -176,8 +179,15 @@ export const useGameStore = create<GameState>()(
         }));
       },
 
+      toggleMuted: () => {
+        set((s) => ({ audioMuted: !s.audioMuted }));
+      },
+
       resetDemo: () => {
-        set({ gold: 250, inventory: [], roster: freshRoster(), activeIdx: 1, equipped: {}, claimedBars: [] });
+        set({
+          gold: 250, inventory: [], roster: freshRoster(), activeIdx: 1,
+          equipped: {}, claimedBars: [], audioMuted: false,
+        });
       },
     }),
     {
@@ -193,6 +203,7 @@ export const useGameStore = create<GameState>()(
         activeIdx: s.activeIdx,
         equipped: s.equipped,
         claimedBars: s.claimedBars,
+        audioMuted: s.audioMuted,
       }),
     },
   ),
