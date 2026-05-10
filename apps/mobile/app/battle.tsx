@@ -119,6 +119,7 @@ export default function BattleScreen() {
   const bumpMastery = useGameStore((s) => s.bumpMastery);
   const earnMark = useGameStore((s) => s.earnMark);
   const recordBarClear = useGameStore((s) => s.recordBarClear);
+  const saveLastBattle = useGameStore((s) => s.saveLastBattle);
   const applyBattleToQuests = useGameStore((s) => s.applyBattleToQuests);
   const activeChar = useGameStore((s) => s.active());
 
@@ -265,6 +266,16 @@ export default function BattleScreen() {
     if (result === 'win' || result === 'loss') {
       const summary = buildSummary(demo, result, barTheme);
       applyBattleToQuests(summary);
+      saveLastBattle({
+        barLabel,
+        theme: barTheme,
+        result,
+        classId: demo.classId,
+        log: demo.state.log.map((e) => ({
+          turn: e.turn, actorId: e.actorId, kind: e.kind, text: e.text,
+        })),
+        finishedAtMs: Date.now(),
+      });
     }
     if (result === 'win') {
       playSfx('victory');
@@ -304,7 +315,7 @@ export default function BattleScreen() {
       playSfx('defeat');
     }
     return undefined;
-  }, [result, demo, demo.classId, awardXp, addGold, addItem, bumpMastery, earnMark, recordBarClear, claimBar, applyBattleToQuests, params.barId, params.tier, barTheme, barLabel]);
+  }, [result, demo, demo.classId, awardXp, addGold, addItem, bumpMastery, earnMark, recordBarClear, saveLastBattle, claimBar, applyBattleToQuests, params.barId, params.tier, barTheme, barLabel]);
 
   // Time-since-hit drives the screen vignette overlay.
   const playerFlashActive = Date.now() - playerHitAt < 280;

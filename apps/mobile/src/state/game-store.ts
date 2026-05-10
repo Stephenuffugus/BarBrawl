@@ -75,6 +75,15 @@ export interface GameState {
   /** Per-bar lifetime + daily clear counts.
    *  total = ever; today = { dateKey, count } resetting at local midnight. */
   barClears: Record<string, { total: number; today: { dateKey: string; count: number } }>;
+  /** Snapshot of the most recent battle for the /replay viewer. */
+  lastBattle: {
+    barLabel: string;
+    theme: string;
+    result: 'win' | 'loss' | 'flee';
+    classId: string;
+    log: { turn: number; actorId: string; kind: string; text: string }[];
+    finishedAtMs: number;
+  } | null;
 
   // selectors
   active: () => CharacterRow;
@@ -95,6 +104,7 @@ export interface GameState {
    * first ever clear of this bar.
    */
   recordBarClear: (barId: string) => { clearNumberToday: number; firstEverClear: boolean };
+  saveLastBattle: (snapshot: NonNullable<GameState['lastBattle']>) => void;
   /** Reset all allocations on a character. Cost: level² gold or 1 token. */
   respecCharacter: (classId: ClassId, useToken: boolean) =>
     | { ok: true; goldSpent: number; tokensSpent: number }
@@ -157,6 +167,7 @@ export const useGameStore = create<GameState>()(
       crawlPassXp: 0,
       marks: [],
       barClears: {},
+      lastBattle: null,
 
       active: () => get().roster[get().activeIdx]!,
       defenderForBar: (barId) => get().claimedBars.find((b) => b.barId === barId),
@@ -279,6 +290,10 @@ export const useGameStore = create<GameState>()(
         };
         set((st) => ({ barClears: { ...st.barClears, [barId]: next } }));
         return { clearNumberToday, firstEverClear };
+      },
+
+      saveLastBattle: (snapshot) => {
+        set({ lastBattle: snapshot });
       },
 
       addItem: (item) => {
@@ -477,7 +492,7 @@ export const useGameStore = create<GameState>()(
           gold: 250, respecTokens: 5, inventory: [], roster: freshRoster(), activeIdx: 1,
           equipped: {}, claimedBars: [], audioMuted: false,
           loginStreak: freshStreak(), pendingLoginRewards: [], dailyQuests: null,
-          crawlPassXp: 0, marks: [], barClears: {},
+          crawlPassXp: 0, marks: [], barClears: {}, lastBattle: null,
         });
       },
     }),
@@ -501,6 +516,7 @@ export const useGameStore = create<GameState>()(
         crawlPassXp: s.crawlPassXp,
         marks: s.marks,
         barClears: s.barClears,
+        lastBattle: s.lastBattle,
       }),
     },
   ),
