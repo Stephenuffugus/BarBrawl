@@ -139,6 +139,13 @@ export default function Title() {
       </Pressable>
 
       <Pressable
+        onPress={() => router.push('/equip')}
+        style={[menuBtn, { marginTop: 12 }]}
+      >
+        <PixelText size={16} color={UI.text}>EQUIPMENT</PixelText>
+      </Pressable>
+
+      <Pressable
         onPress={() => router.push('/mastery')}
         style={[menuBtn, { marginTop: 12 }]}
       >

@@ -1,9 +1,9 @@
 // Inventory screen — every rolled drop persists in the store. Tap an
 // item to expand. Rarity-tinted borders, slot/ilvl/affixes/anointment.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { getClass, Gating, type ClassId, type Loot } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
@@ -35,13 +35,23 @@ const RARITY_SELL_MULT: Record<string, number> = {
   common: 1, uncommon: 2, rare: 5, epic: 12, legendary: 30,
 };
 
+function isItemSlot(s: string | undefined): s is Loot.ItemSlot {
+  return s === 'weapon' || s === 'outfit' || s === 'footwear' || s === 'trinket' || s === 'mark';
+}
+
 export default function InventoryScreen() {
   const { inventory, gold, roster, activeIdx, equipped, equipItem, sellItem, marks } = useGameStore();
   const activeChar = roster[activeIdx]!;
   const activeCls = getClass(activeChar.class_id);
   const charEquipped = equipped[activeChar.class_id] ?? {};
 
-  const [filter, setFilter] = useState<Loot.ItemSlot | 'all'>('all');
+  const params = useLocalSearchParams<{ slot?: string }>();
+  const initialFilter: Loot.ItemSlot | 'all' = isItemSlot(params.slot) ? params.slot : 'all';
+  const [filter, setFilter] = useState<Loot.ItemSlot | 'all'>(initialFilter);
+  // Re-sync filter if route params change (deep-link from /equip).
+  useEffect(() => {
+    if (isItemSlot(params.slot)) setFilter(params.slot);
+  }, [params.slot]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [confirmSellId, setConfirmSellId] = useState<string | null>(null);
   const [sellFeedback, setSellFeedback] = useState<string | null>(null);
