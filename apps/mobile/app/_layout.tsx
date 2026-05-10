@@ -8,7 +8,16 @@ import { setSfxMuted } from "@/audio/sfx";
 export default function RootLayout() {
   // Sync persisted audioMuted into the SFX module.
   const audioMuted = useGameStore((s) => s.audioMuted);
+  const registerLogin = useGameStore((s) => s.registerLogin);
+  const rollDailyQuestsIfNeeded = useGameStore((s) => s.rollDailyQuestsIfNeeded);
+
   useEffect(() => { setSfxMuted(audioMuted); }, [audioMuted]);
+
+  // On app boot, register the day's login + roll today's quests.
+  useEffect(() => {
+    registerLogin();
+    rollDailyQuestsIfNeeded();
+  }, [registerLogin, rollDailyQuestsIfNeeded]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

@@ -1,10 +1,19 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import {
-  applyXp, createStarterRoster, type NewCharacterRow, type ClassId,
+  applyXp, createStarterRoster, Events, Progression,
+  type NewCharacterRow, type ClassId,
 } from '@barbrawl/game-core';
 import type { Loot } from '@barbrawl/game-core';
 import { portableStorage } from './storage';
+
+const { applyLogin, freshStreak } = Events;
+const { pickDailyQuests, freshQuestProgress, updateQuestProgress, claimQuest } = Progression;
+type LoginStreakState = ReturnType<typeof freshStreak>;
+type LoginReward = ReturnType<typeof applyLogin>['rewards'][number];
+type QuestDef = ReturnType<typeof pickDailyQuests>[number];
+type QuestProgress = ReturnType<typeof freshQuestProgress>;
+type BattleSummary = Parameters<typeof updateQuestProgress>[2];
 
 // Persistent game state. Survives reload via localStorage on web; swap
 // to AsyncStorage on native by editing storage.ts (one-line change).
@@ -35,6 +44,15 @@ export interface ClaimedBar {
   coinsClaimedAtMs: number | null;
 }
 
+export interface DailyQuestState {
+  /** Local YYYY-MM-DD when these quests were rolled. */
+  dateKey: string;
+  /** 3 picked quests for today. */
+  picks: readonly [QuestDef, QuestDef, QuestDef];
+  /** Per-quest-id progress record. */
+  progress: Record<string, QuestProgress>;
+}
+
 export interface GameState {
   userId: string;
   gold: number;
@@ -45,6 +63,10 @@ export interface GameState {
   equipped: Record<string, EquippedSlots>;
   claimedBars: ClaimedBar[];
   audioMuted: boolean;
+  loginStreak: LoginStreakState;
+  /** Most recent login rewards — UI shows them once and clears. */
+  pendingLoginRewards: readonly LoginReward[];
+  dailyQuests: DailyQuestState | null;
 
   // selectors
   active: () => CharacterRow;
@@ -64,6 +86,11 @@ export interface GameState {
   stationDefender: (barId: string, classId: ClassId, defenderMaxHp: number) => void;
   unstationDefender: (barId: string) => void;
   collectBarCoins: (barId: string) => number;
+  registerLogin: () => void;
+  clearLoginRewards: () => void;
+  rollDailyQuestsIfNeeded: () => void;
+  applyBattleToQuests: (summary: BattleSummary) => void;
+  claimDailyQuest: (questId: string) => boolean;
   toggleMuted: () => void;
   resetDemo: () => void;
 }
@@ -101,6 +128,9 @@ export const useGameStore = create<GameState>()(
       equipped: {},
       claimedBars: [],
       audioMuted: false,
+      loginStreak: freshStreak(),
+      pendingLoginRewards: [],
+      dailyQuests: null,
 
       active: () => get().roster[get().activeIdx]!,
       defenderForBar: (barId) => get().claimedBars.find((b) => b.barId === barId),
@@ -263,10 +293,86 @@ export const useGameStore = create<GameState>()(
         set((s) => ({ audioMuted: !s.audioMuted }));
       },
 
+      registerLogin: () => {
+        const s = get();
+        const result = applyLogin(s.loginStreak);
+        if (!result.isNewDay) return;
+        // Apply gold rewards immediately. Other rewards stay in pending so
+        // the UI can show a "you earned X" panel once.
+        let goldDelta = 0;
+        const consumableDeltas: Record<string, number> = {};
+        for (const r of result.rewards) {
+          if (r.kind === 'gold') goldDelta += r.amount;
+          if (r.kind === 'consumable' && r.itemId) {
+            consumableDeltas[r.itemId] = (consumableDeltas[r.itemId] ?? 0) + r.amount;
+          }
+        }
+        set((st) => ({
+          loginStreak: result.state,
+          pendingLoginRewards: result.rewards,
+          gold: st.gold + goldDelta,
+          // Drop streak consumables into every character's stash.
+          roster: st.roster.map((r) => {
+            const m = { ...(r.consumables as Record<string, number>) };
+            for (const [id, n] of Object.entries(consumableDeltas)) {
+              m[id] = (m[id] ?? 0) + n;
+            }
+            return { ...r, consumables: m };
+          }),
+        }));
+      },
+
+      clearLoginRewards: () => set({ pendingLoginRewards: [] }),
+
+      rollDailyQuestsIfNeeded: () => {
+        const s = get();
+        const today = new Date().toISOString().slice(0, 10);
+        if (s.dailyQuests && s.dailyQuests.dateKey === today) return;
+        const picks = pickDailyQuests(s.userId, today);
+        const progress: Record<string, QuestProgress> = {};
+        for (const q of picks) progress[q.id] = freshQuestProgress(q);
+        set({ dailyQuests: { dateKey: today, picks, progress } });
+      },
+
+      applyBattleToQuests: (summary) => {
+        const s = get();
+        if (!s.dailyQuests) return;
+        const next = { ...s.dailyQuests.progress };
+        for (const def of s.dailyQuests.picks) {
+          const prior = next[def.id] ?? freshQuestProgress(def);
+          next[def.id] = updateQuestProgress(def, prior, summary);
+        }
+        set({ dailyQuests: { ...s.dailyQuests, progress: next } });
+      },
+
+      claimDailyQuest: (questId) => {
+        const s = get();
+        if (!s.dailyQuests) return false;
+        const def = s.dailyQuests.picks.find((q) => q.id === questId);
+        const prog = s.dailyQuests.progress[questId];
+        if (!def || !prog || !prog.completed || prog.claimed) return false;
+        const { xpAwarded, updated } = claimQuest(def, prog);
+        const active = s.roster[s.activeIdx];
+        if (!active) return false;
+        const xpRes = applyXp({ level: active.level, xpIntoLevel: active.xp }, xpAwarded);
+        set((st) => ({
+          dailyQuests: st.dailyQuests
+            ? { ...st.dailyQuests, progress: { ...st.dailyQuests.progress, [questId]: updated } }
+            : st.dailyQuests,
+          roster: st.roster.map((r, i) =>
+            i === st.activeIdx
+              ? { ...r, level: xpRes.state.level, xp: xpRes.state.xpIntoLevel }
+              : r,
+          ),
+        }));
+        return true;
+      },
+
       resetDemo: () => {
         set({
           gold: 250, inventory: [], roster: freshRoster(), activeIdx: 1,
           equipped: {}, claimedBars: [], audioMuted: false,
+          loginStreak: freshStreak(), pendingLoginRewards: [], dailyQuests: null,
         });
       },
     }),
@@ -284,6 +390,8 @@ export const useGameStore = create<GameState>()(
         equipped: s.equipped,
         claimedBars: s.claimedBars,
         audioMuted: s.audioMuted,
+        loginStreak: s.loginStreak,
+        dailyQuests: s.dailyQuests,
       }),
     },
   ),

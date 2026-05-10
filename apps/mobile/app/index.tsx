@@ -93,6 +93,13 @@ export default function Title() {
       </Pressable>
 
       <Pressable
+        onPress={() => router.push('/quests')}
+        style={[menuBtn, { marginTop: 12 }]}
+      >
+        <PixelText size={16} color={UI.text}>DAILY QUESTS</PixelText>
+      </Pressable>
+
+      <Pressable
         onPress={() => router.push('/battle')}
         style={[menuBtn, { marginTop: 12 }]}
       >

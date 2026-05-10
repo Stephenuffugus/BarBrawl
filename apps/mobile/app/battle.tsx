@@ -62,6 +62,36 @@ function pickSlot(): Loot.ItemSlot {
   return slots[Math.floor(Math.random() * slots.length)]!;
 }
 
+/** Build a BattleSummary for daily-quest progress updates. */
+function buildSummary(demo: DemoBattle, result: 'win' | 'loss', barTheme: BarThemeId) {
+  const player = demo.state.combatants.find((c) => c.kind === 'player');
+  const log = demo.state.log;
+  const perfectHits = log.filter((e) => /\(perfect/.test(e.text)).length;
+  const skillsUsed = log.filter((e) => e.kind === 'skill').length;
+  const consumablesUsed = log.filter((e) => e.kind === 'consumable').length;
+  const statusApplies = log.filter((e) => /applies|inflicts|stuns|skips|braces|reads/.test(e.text)).length;
+  let biggestHit = 0;
+  for (const e of log) {
+    const m = e.text.match(/for (\d+)/);
+    if (m) biggestHit = Math.max(biggestHit, parseInt(m[1]!, 10));
+  }
+  return {
+    won: result === 'win',
+    barType: barTheme,
+    barLevel: player?.level ?? 1,
+    playerLevel: player?.level ?? 1,
+    bossDefeated: result === 'win',
+    perfectHits,
+    skillsUsed,
+    statusApplies,
+    consumablesUsed,
+    biggestHit,
+    roomsCleared: 3,
+    endedHpPct: player ? player.stats.hp / player.stats.maxHp : 0,
+    goldEarned: result === 'win' ? 50 : 0,
+  };
+}
+
 export default function BattleScreen() {
   const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string }>();
   const barTheme: BarThemeId = isBarTheme(params.theme) ? params.theme : 'dive';
@@ -87,6 +117,7 @@ export default function BattleScreen() {
   const claimBar = useGameStore((s) => s.claimBar);
   const consumeItem = useGameStore((s) => s.consumeItem);
   const bumpMastery = useGameStore((s) => s.bumpMastery);
+  const applyBattleToQuests = useGameStore((s) => s.applyBattleToQuests);
   const activeChar = useGameStore((s) => s.active());
 
   const player = demo.state.combatants.find((c) => c.kind === 'player')!;
@@ -227,8 +258,12 @@ export default function BattleScreen() {
     }
   }, [result, params.barId, barTheme, barLabel]);
 
-  // Reward minting on victory (XP + gold + loot drop + bar claim).
+  // Reward minting on victory (XP + gold + loot drop + bar claim + quests).
   useEffect(() => {
+    if (result === 'win' || result === 'loss') {
+      const summary = buildSummary(demo, result, barTheme);
+      applyBattleToQuests(summary);
+    }
     if (result === 'win') {
       playSfx('victory');
       const t = setTimeout(() => {
@@ -251,7 +286,7 @@ export default function BattleScreen() {
       playSfx('defeat');
     }
     return undefined;
-  }, [result, demo.classId, awardXp, addGold, addItem, bumpMastery, claimBar, params.barId, barTheme, barLabel]);
+  }, [result, demo, demo.classId, awardXp, addGold, addItem, bumpMastery, claimBar, applyBattleToQuests, params.barId, barTheme, barLabel]);
 
   // Time-since-hit drives the screen vignette overlay.
   const playerFlashActive = Date.now() - playerHitAt < 280;
