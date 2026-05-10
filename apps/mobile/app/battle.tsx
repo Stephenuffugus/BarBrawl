@@ -23,6 +23,8 @@ import { SkillPanel } from '@/components/SkillPanel';
 import { ShakeFlash } from '@/components/ShakeFlash';
 import { VictoryFlash } from '@/components/VictoryFlash';
 import { ResourceBar } from '@/components/ResourceBar';
+import { StatusRow } from '@/components/StatusRow';
+import { ConsumablePanel } from '@/components/ConsumablePanel';
 import { playSfx } from '@/audio/sfx';
 import { SPRITES, type SpriteId } from '@/design/sprites';
 import { UI, CLASS_ACCENT, BAR_PALETTES, type BarThemeId } from '@/design/palette';
@@ -33,7 +35,7 @@ import { useGameStore } from '@/state/game-store';
 const COMMAND_ITEMS: readonly MenuItem[] = [
   { id: 'fight', label: 'FIGHT' },
   { id: 'skill', label: 'SKILL' },
-  { id: 'item',  label: 'ITEM',  disabled: true },
+  { id: 'item',  label: 'ITEM' },
   { id: 'run',   label: 'RUN' },
 ];
 
@@ -41,7 +43,7 @@ function isBarTheme(s: string | undefined): s is BarThemeId {
   return !!s && s in BAR_PALETTES;
 }
 
-type Phase = 'idle' | 'choosing-skill' | 'awaiting-rhythm' | 'resolving';
+type Phase = 'idle' | 'choosing-skill' | 'choosing-item' | 'awaiting-rhythm' | 'resolving';
 
 interface PendingAction {
   kind: 'basic_attack' | 'skill';
@@ -83,6 +85,8 @@ export default function BattleScreen() {
   const addItem = useGameStore((s) => s.addItem);
   const addGold = useGameStore((s) => s.addGold);
   const claimBar = useGameStore((s) => s.claimBar);
+  const consumeItem = useGameStore((s) => s.consumeItem);
+  const activeChar = useGameStore((s) => s.active());
 
   const player = demo.state.combatants.find((c) => c.kind === 'player')!;
   const aliveEnemy = demo.state.combatants.find(
@@ -112,6 +116,8 @@ export default function BattleScreen() {
       setPhase('awaiting-rhythm');
     } else if (id === 'skill') {
       setPhase('choosing-skill');
+    } else if (id === 'item') {
+      setPhase('choosing-item');
     } else if (id === 'run') {
       router.back();
     }
@@ -126,6 +132,37 @@ export default function BattleScreen() {
   const onCancelSkill = useCallback(() => {
     setPhase('idle');
   }, []);
+
+  const onPickItem = useCallback((consumableId: string) => {
+    setPhase('resolving');
+    const ok = consumeItem(demo.classId, consumableId);
+    if (!ok) { setPhase('idle'); return; }
+    const rng = makeRng();
+    const action: Combat.PlayerAction = {
+      kind: 'consumable',
+      actorId: demo.playerId,
+      consumableId,
+    };
+    let next = Combat.applyPlayerAction(demo.state, action, { rng });
+    if (!next.result) next = Combat.advanceTurn(next, { rng });
+
+    // Detect player damage from enemy retaliation.
+    const playerBefore = demo.state.combatants.find((c) => c.kind === 'player');
+    const playerAfter = next.combatants.find((c) => c.kind === 'player');
+    if (playerBefore && playerAfter) {
+      const dmg = playerBefore.stats.hp - playerAfter.stats.hp;
+      if (dmg > 0) {
+        const heavy = dmg / playerBefore.stats.maxHp >= 0.15;
+        setPlayerHitSeverity(heavy ? 'heavy' : 'light');
+        setPlayerHitAt(Date.now());
+      }
+    }
+    setDemo({ ...demo, state: next });
+    playSfx('menu_select');
+    setTimeout(() => setPhase('idle'), 350);
+  }, [demo, consumeItem]);
+
+  const onCancelItem = useCallback(() => setPhase('idle'), []);
 
   // ── rhythm resolution ─────────────────────────────────────────
   const onRhythmResolved = useCallback((rResult: RhythmResult) => {
@@ -262,6 +299,9 @@ export default function BattleScreen() {
           <View style={{ marginTop: 4 }}>
             <HpBar hp={focused.stats.hp} maxHp={focused.stats.maxHp} widthCells={28} showNumbers={false} />
           </View>
+          <View style={{ marginTop: 4 }}>
+            <StatusRow effects={focused.statusEffects} compact />
+          </View>
         </View>
         <ShakeFlash hitToken={hitToken} strong={lastHitWasCrit}>
           <View style={{ opacity: focused.stats.hp > 0 ? 1 : 0.3 }}>
@@ -338,6 +378,11 @@ export default function BattleScreen() {
           {player.resource ? (
             <ResourceBar resource={player.resource} widthCells={22} />
           ) : null}
+          {player.statusEffects.length > 0 ? (
+            <View style={{ marginTop: 6 }}>
+              <StatusRow effects={player.statusEffects} />
+            </View>
+          ) : null}
         </Panel>
 
         {/* The right-side panel cycles between menu / skills / rhythm */}
@@ -348,6 +393,12 @@ export default function BattleScreen() {
               equipped={demo.equipped}
               onPick={onPickSkill}
               onCancel={onCancelSkill}
+            />
+          ) : phase === 'choosing-item' ? (
+            <ConsumablePanel
+              pack={activeChar.consumables as Record<string, number>}
+              onPick={onPickItem}
+              onCancel={onCancelItem}
             />
           ) : phase === 'awaiting-rhythm' ? (
             <Panel style={{ minHeight: 132, alignItems: 'center', justifyContent: 'center' }}>

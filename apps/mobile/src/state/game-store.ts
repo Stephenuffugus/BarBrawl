@@ -54,6 +54,7 @@ export interface GameState {
   addGold: (g: number) => void;
   equipItem: (classId: ClassId, item: Loot.Item) => void;
   unequipSlot: (classId: ClassId, slot: Loot.ItemSlot) => void;
+  consumeItem: (classId: ClassId, consumableId: string) => boolean;
   claimBar: (bar: { barId: string; theme: string; label: string }) => void;
   stationDefender: (barId: string, classId: ClassId) => void;
   unstationDefender: (barId: string) => void;
@@ -61,13 +62,24 @@ export interface GameState {
   resetDemo: () => void;
 }
 
+// Starter stash so demo players have something to use on the ITEM button.
+const STARTER_CONSUMABLES: Readonly<Record<string, number>> = Object.freeze({
+  small_brew: 2,
+  house_special: 1,
+  shot_of_courage: 1,
+  iron_tonic: 1,
+  focus_vial: 1,
+  emergency_elixir: 1,
+  palette_cleanser: 1,
+});
+
 function freshRoster(): CharacterRow[] {
   return createStarterRoster(DEMO_USER_ID).map((r) => ({
     ...r,
     allocated_nodes: [...r.allocated_nodes],
     inventory: [...r.inventory],
     equipped: { ...r.equipped },
-    consumables: { ...r.consumables },
+    consumables: { ...STARTER_CONSUMABLES },
     mastery: { ...r.mastery },
   }));
 }
@@ -141,6 +153,25 @@ export const useGameStore = create<GameState>()(
           delete cur[slot];
           return { equipped: { ...s.equipped, [classId]: cur } };
         });
+      },
+
+      consumeItem: (classId, consumableId) => {
+        const s = get();
+        const row = s.roster.find((r) => r.class_id === classId);
+        if (!row) return false;
+        const count = (row.consumables as Record<string, number>)[consumableId] ?? 0;
+        if (count <= 0) return false;
+        set((st) => ({
+          roster: st.roster.map((r) => {
+            if (r.class_id !== classId) return r;
+            const next = { ...(r.consumables as Record<string, number>) };
+            const newCount = (next[consumableId] ?? 0) - 1;
+            if (newCount <= 0) delete next[consumableId];
+            else next[consumableId] = newCount;
+            return { ...r, consumables: next };
+          }),
+        }));
+        return true;
       },
 
       claimBar: (bar) => {
