@@ -5,38 +5,63 @@
 
 ## Where we are
 
-**Mobile demo is fully wired and playable end-to-end on web.**
-Full loop: Title → Map (walkable Pokemon town with 4 bars) →
-Preview (bar context) → Dungeon (3-room Pokemon-style crawl) →
-Battle (PS1-literal layout + rhythm input + skill panel) → Victory
-flash → Rewards (real loot drop) → Defender placement → back to Map
-(now showing claimed bar with stationed defender).
+**Mobile demo runs end-to-end on web with deep mechanics surfaced.**
+Full loop: Title → Map (camera-following Pokemon town with 4 tiered
+bars) → Preview (bar context + tier/damage gating) → Dungeon (3-room
+Pokemon-style crawl) → Battle (PS1-literal layout + rhythm input +
+skill panel + ITEM consumables + status effect chips + per-class
+resource bar) → Victory flash → Rewards (scaled XP/gold/loot from
+daily-refresh × first-conquer × tier modifiers, real loot drop, mark
+drop on tier-3+ wins) → Defender placement → Territory → back to Map
+(claimed bars pulse gold).
 
-`apps/mobile/` shipped this session:
+**Every spec system from game-core has UI now.** Including:
+- 7-class roster with persistent allocations, equipment, mastery
+- 21 skill trees (D2-style, prereq lines), respec for level² gold
+- Full battle: rhythm × skills × consumables × status effects
+- Loot: rolls + equip + sell + Resistance Marks
+- Metroidvania gating: tier 4+ requires matching mark
+- Defender stationing + decay + coin claim + recall
+- Mastery (49 tracks) + Daily Quests + Login Streak
+- Crawl Pass tier progression + World Boss alert
+- Battle Replay viewer (step / autoplay / reset)
+
+`apps/mobile/` shipped:
 - **Design system** (`src/design/`): GBC palette per bar theme, scale
   tokens, sprite catalog (32×32 enemies, 48×48 boss), tile catalog +
-  overworld map ASCII layout, dungeon room layouts.
-- **Components** (`src/components/`): PixelGrid (run-length-optimized),
-  PixelText, Panel, HpBar (animated drain), MenuList (with SFX),
-  RhythmBar (1.2s sliding marker, gold/green/red zones, with SFX),
-  SkillPanel, TreeGraph (D2-style with prereq lines), NodeDetailPanel,
-  Tilemap, PlayerSprite (2-frame walk), DPad, ShakeFlash (per-hit
-  jitter + tint), VictoryFlash (gold pulse + sparkles).
-- **Audio** (`src/audio/sfx.ts`): Web Audio synth with 11 patches
-  (menu_move, menu_select, hit, crit, miss, perfect, good, victory,
-  level_up, footstep, defeat). No asset bundle — generates 8-bit tones
-  inline. Lazy AudioContext + auto-resume. Mute toggle persists.
+  overworld map (12×18 with 4 tiered bars), dungeon room layouts.
+- **Components** (`src/components/`): PixelGrid, PixelText, Panel,
+  HpBar (animated drain), MenuList, RhythmBar (1.2s marker), SkillPanel,
+  ConsumablePanel, TreeGraph (D2-style), NodeDetailPanel, Tilemap,
+  PlayerSprite (2-frame walk), DPad, ShakeFlash, VictoryFlash,
+  ResourceBar (per-class), StatusRow (effect chips), ClaimMarker
+  (pulsing gold over claimed bars).
+- **Audio** (`src/audio/sfx.ts`): Web Audio synth, 11 patches generated
+  inline. Lazy AudioContext + auto-resume + persistent mute toggle.
 - **State** (`src/state/`): Zustand persist middleware via
-  portableStorage (localStorage on web, in-memory on native). Holds
-  roster (7 createStarterRoster chars), inventory (real Loot.Item),
-  gold, equipped[classId][slot], claimedBars[], audioMuted. Actions:
-  setActive, allocateNode (capped at level), awardXp, addItem,
-  addGold, equipItem, unequipSlot, claimBar, stationDefender,
+  portableStorage. Persists roster (7 chars), inventory, gold,
+  respecTokens, equipped, claimedBars, marks, barClears, loginStreak,
+  dailyQuests, crawlPassXp, audioMuted, lastBattle. Actions: setActive,
+  allocateNode (SP-capped), awardXp (+ Crawl Pass + token grant on
+  level milestones), bumpMastery, earnMark, equipItem, unequipSlot,
+  consumeItem, sellItem, claimBar, stationDefender, collectBarCoins,
+  registerLogin, rollDailyQuestsIfNeeded, applyBattleToQuests,
+  claimDailyQuest, respecCharacter, recordBarClear, saveLastBattle,
   toggleMuted. effective-stats.ts folds equipped affixes into combat.
-- **Screens** (`app/`): index (title with mute toggle), map (12×18
-  Pokemon overworld, claimed bars get YOURS badge), preview (bar
-  context + boss preview), dungeon (3-room walkable interior, themed
-  per bar), battle (PS1 layout, FIGHT/SKILL/ITEM/RUN, rhythm bar,
+- **Screens** (`app/`): index (title with mute toggle, Crawl Pass
+  progress strip, login streak chip, world boss alert ribbon), map
+  (camera-following 12×18 overworld, claimed bars pulse, tier badges),
+  preview (bar context + boss preview, locked panel for tier 4+
+  without mark), dungeon (3-room walkable interior, themed per bar),
+  battle (PS1 layout, FIGHT/SKILL/ITEM/RUN, rhythm bar, status chips,
+  resource bar, attacker pose, theme backdrop), tree (D2 graph,
+  respec link), roster (7 classes with effective stats + slot
+  chips), inventory (rarity cards, EQUIP+SELL, marks panel), rewards
+  (real loot + bar-claim status), defender (pick from 7 to station),
+  territory (claimed bars + HP decay + CLAIM coins + RECALL), mastery
+  (7×7 tracks with progress bars), quests (3 daily + login streak
+  header + claim XP), respec (gold or token), replay (step/autoplay
+  through last battle log).
   damage flash + sprite shake + screen vignette on hit, victory flash,
   reads effective stats), tree (D2 graph with prereq lines, allocate
   with SP cap), roster (7 classes with stats + equipped slot chips),
@@ -327,15 +352,14 @@ When you pick this back up, consider in this order:
 
 1. **Real character + enemy + tile sprite art**. The placeholder
    PixelGrid sprites work but are abstract. Replacing them with
-   actual Pokemon Red-style 16×16/32×32 art (or AI-assisted first
-   pass with manual cleanup) would visually 10× the demo. Feeds via
-   `apps/mobile/src/design/sprites.ts` and `tiles.ts` strings —
+   actual Pokemon Red-style art would visually 10× the demo. Feeds
+   via `apps/mobile/src/design/sprites.ts` and `tiles.ts` strings —
    change the data, not the components.
-2. **Camera-centered map** — currently the whole 12×18 town is shown
-   at 0.5× scale. A camera that follows the player + scrolls would
-   feel more authentic.
-3. **Battle attack animations** — currently only the *defender*
-   shakes/flashes on hit. The attacker should briefly leap/lunge.
+2. **Multi-character party combat** — bring 2 characters into a fight,
+   SWAP between them mid-battle. Combat engine supports it (initBattle
+   takes any number of combatants); demo currently builds 1 player.
+3. **Trainer LOS encounters in dungeon** — patrol enemies that block
+   paths in dungeon rooms. Adds Pokemon-style overworld depth.
 4. **Distribution target decision** — still the load-bearing blocker
    for native shipping. Web demo runs as-is; native build needs the
    audio swap (expo-av + .wav files) and `@react-native-async-storage/
