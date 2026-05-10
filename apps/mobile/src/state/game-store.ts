@@ -72,6 +72,9 @@ export interface GameState {
   crawlPassXp: number;
   /** Resistance Mark IDs the player owns. Tier 4+ entries require matching mark. */
   marks: readonly string[];
+  /** Per-bar lifetime + daily clear counts.
+   *  total = ever; today = { dateKey, count } resetting at local midnight. */
+  barClears: Record<string, { total: number; today: { dateKey: string; count: number } }>;
 
   // selectors
   active: () => CharacterRow;
@@ -84,6 +87,12 @@ export interface GameState {
   bumpMastery: (classId: ClassId, barType: string) => void;
   /** Add a Resistance Mark id. Returns true if newly added, false if already owned. */
   earnMark: (markId: string) => boolean;
+  /**
+   * Record a bar clear. Returns metadata the rewards screen surfaces:
+   * which clear-of-day this was (1, 2, 3+) and whether it was the
+   * first ever clear of this bar.
+   */
+  recordBarClear: (barId: string) => { clearNumberToday: number; firstEverClear: boolean };
   /** Reset all allocations on a character. Cost: level² gold or 1 token. */
   respecCharacter: (classId: ClassId, useToken: boolean) =>
     | { ok: true; goldSpent: number; tokensSpent: number }
@@ -145,6 +154,7 @@ export const useGameStore = create<GameState>()(
       dailyQuests: null,
       crawlPassXp: 0,
       marks: [],
+      barClears: {},
 
       active: () => get().roster[get().activeIdx]!,
       defenderForBar: (barId) => get().claimedBars.find((b) => b.barId === barId),
@@ -225,6 +235,21 @@ export const useGameStore = create<GameState>()(
         if (s.marks.includes(markId)) return false;
         set((st) => ({ marks: [...st.marks, markId] }));
         return true;
+      },
+
+      recordBarClear: (barId) => {
+        const s = get();
+        const today = new Date().toISOString().slice(0, 10);
+        const prior = s.barClears[barId];
+        const firstEverClear = !prior || prior.total === 0;
+        const clearsToday = prior?.today.dateKey === today ? prior.today.count : 0;
+        const clearNumberToday = clearsToday + 1;
+        const next = {
+          total: (prior?.total ?? 0) + 1,
+          today: { dateKey: today, count: clearNumberToday },
+        };
+        set((st) => ({ barClears: { ...st.barClears, [barId]: next } }));
+        return { clearNumberToday, firstEverClear };
       },
 
       addItem: (item) => {
@@ -423,7 +448,7 @@ export const useGameStore = create<GameState>()(
           gold: 250, respecTokens: 5, inventory: [], roster: freshRoster(), activeIdx: 1,
           equipped: {}, claimedBars: [], audioMuted: false,
           loginStreak: freshStreak(), pendingLoginRewards: [], dailyQuests: null,
-          crawlPassXp: 0, marks: [],
+          crawlPassXp: 0, marks: [], barClears: {},
         });
       },
     }),
@@ -446,6 +471,7 @@ export const useGameStore = create<GameState>()(
         dailyQuests: s.dailyQuests,
         crawlPassXp: s.crawlPassXp,
         marks: s.marks,
+        barClears: s.barClears,
       }),
     },
   ),

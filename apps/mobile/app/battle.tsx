@@ -12,7 +12,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Combat, Loot, Gating, type RhythmResult, type RhythmQuality } from '@barbrawl/game-core';
+import { Combat, Loot, Gating, Progression, type RhythmResult, type RhythmQuality } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
 import { PixelGrid } from '@/components/PixelGrid';
@@ -118,6 +118,7 @@ export default function BattleScreen() {
   const consumeItem = useGameStore((s) => s.consumeItem);
   const bumpMastery = useGameStore((s) => s.bumpMastery);
   const earnMark = useGameStore((s) => s.earnMark);
+  const recordBarClear = useGameStore((s) => s.recordBarClear);
   const applyBattleToQuests = useGameStore((s) => s.applyBattleToQuests);
   const activeChar = useGameStore((s) => s.active());
 
@@ -268,19 +269,28 @@ export default function BattleScreen() {
     if (result === 'win') {
       playSfx('victory');
       const t = setTimeout(() => {
-        awardXp(demo.classId, 100);
-        addGold(50);
+        // Compute reward multipliers from the current bar's clear context.
+        const tierStr = (params.tier as string | undefined) ?? '1';
+        const tier = parseInt(tierStr, 10) || 1;
+        const barId = params.barId ?? '';
+        const meta = barId ? recordBarClear(barId) : { clearNumberToday: 1, firstEverClear: true };
+        const dailyMult = Progression.rewardMultiplierForClearNumber(meta.clearNumberToday);
+        const firstConquerMult = meta.firstEverClear ? 2 : 1;
+        // Bar tier scales loot ilvl AND awards bonus XP at high tiers.
+        const tierMult = 1 + (tier - 1) * 0.25; // T1=1.0, T6=2.25
+        const xpAward = Math.floor(100 * dailyMult * firstConquerMult * tierMult);
+        const goldAward = Math.floor(50 * dailyMult * tierMult);
+
+        awardXp(demo.classId, xpAward);
+        addGold(goldAward);
         const item = Loot.rollItem({
           slot: pickSlot(),
-          barTier: 1,
+          barTier: tier,
           rng: Math.random,
           itemIdGen: () => `it-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         });
         addItem(item);
         bumpMastery(demo.classId, barTheme);
-        // Tier-3+ wins drop the matching damage-type Mark (per spec §3.1).
-        const tierStr = (params.tier as string | undefined) ?? '1';
-        const tier = parseInt(tierStr, 10) || 1;
         if (tier >= 3) {
           const dmgType = Gating.BAR_THEME_DAMAGE[barTheme];
           earnMark(`mark_${dmgType}`);
@@ -294,7 +304,7 @@ export default function BattleScreen() {
       playSfx('defeat');
     }
     return undefined;
-  }, [result, demo, demo.classId, awardXp, addGold, addItem, bumpMastery, earnMark, claimBar, applyBattleToQuests, params.barId, params.tier, barTheme, barLabel]);
+  }, [result, demo, demo.classId, awardXp, addGold, addItem, bumpMastery, earnMark, recordBarClear, claimBar, applyBattleToQuests, params.barId, params.tier, barTheme, barLabel]);
 
   // Time-since-hit drives the screen vignette overlay.
   const playerFlashActive = Date.now() - playerHitAt < 280;
