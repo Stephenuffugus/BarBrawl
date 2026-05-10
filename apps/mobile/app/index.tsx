@@ -1,13 +1,33 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { router } from 'expo-router';
+import { Events } from '@barbrawl/game-core';
 import { UI } from '@/design/palette';
 import { PIXEL } from '@/design/scale';
 import { PixelText } from '@/components/PixelText';
 import { useGameStore } from '@/state/game-store';
 
+const { progressIntoTier, CRAWL_PASS_RULES } = Events;
+
+/** Demo heuristic: world boss is "active" Sat 20:00 → Mon 20:00 local. */
+function isWorldBossActive(now: Date = new Date()): boolean {
+  const day = now.getDay(); // 0 Sun .. 6 Sat
+  const hour = now.getHours();
+  // Saturday from 20:00 onward, Sunday all day, Monday until 20:00.
+  if (day === 6 && hour >= 20) return true;
+  if (day === 0) return true;
+  if (day === 1 && hour < 20) return true;
+  return false;
+}
+
 export default function Title() {
-  const { audioMuted, toggleMuted } = useGameStore();
+  const { audioMuted, toggleMuted, crawlPassXp, loginStreak } = useGameStore();
+  const cp = progressIntoTier(crawlPassXp);
+  const cpPct = cp.tier >= CRAWL_PASS_RULES.TIER_COUNT
+    ? 1
+    : cp.xpIntoTier / CRAWL_PASS_RULES.XP_PER_TIER;
+  const wbActive = isWorldBossActive();
+
   return (
     <View
       style={{
@@ -18,6 +38,39 @@ export default function Title() {
         padding: 24,
       }}
     >
+      {/* World boss alert ribbon */}
+      {wbActive ? (
+        <View style={{
+          position: 'absolute',
+          top: 24, left: 0, right: 0,
+          alignItems: 'center',
+        }}>
+          <View style={{
+            backgroundColor: '#3a0808',
+            borderColor: UI.hpLow,
+            borderWidth: PIXEL,
+            paddingVertical: 6, paddingHorizontal: 16,
+          }}>
+            <PixelText size={11} color={UI.hpLow}>
+              ▶ TITAN AT LARGE — WORLD BOSS ACTIVE
+            </PixelText>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Login streak chip */}
+      {loginStreak.currentStreak > 0 ? (
+        <View style={{
+          position: 'absolute', top: wbActive ? 70 : 24, left: 16,
+          paddingHorizontal: 8, paddingVertical: 4,
+          borderColor: UI.cursor, borderWidth: 1,
+          backgroundColor: UI.panelFill,
+        }}>
+          <PixelText size={9} color={UI.cursor}>
+            STREAK · {loginStreak.currentStreak}d
+          </PixelText>
+        </View>
+      ) : null}
       {/* Mute toggle, top-right */}
       <Pressable
         onPress={toggleMuted}
@@ -106,10 +159,30 @@ export default function Title() {
         <PixelText size={16} color={UI.text}>FIGHT (DEMO)</PixelText>
       </Pressable>
 
-      <PixelText size={9} color={UI.textDim} style={{ marginTop: 48, textAlign: 'center' }}>
-        Phase 13 — battle wired · rhythm · trees{'\n'}
-        408 tests · 33 suites · all green
-      </PixelText>
+      {/* Crawl Pass progress strip */}
+      <View style={{ marginTop: 28, alignItems: 'center', width: 240 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+          <PixelText size={9} color={UI.textDim}>CRAWL PASS</PixelText>
+          <PixelText size={9} color={UI.cursor}>
+            T{cp.tier}/{CRAWL_PASS_RULES.TIER_COUNT}
+          </PixelText>
+        </View>
+        <View style={{
+          marginTop: 4,
+          width: '100%', height: PIXEL,
+          backgroundColor: UI.bg,
+          borderColor: UI.border, borderWidth: 1,
+          flexDirection: 'row',
+        }}>
+          <View style={{
+            width: `${cpPct * 100}%`, height: '100%',
+            backgroundColor: UI.cursor,
+          }} />
+        </View>
+        <PixelText size={8} color={UI.textDim} style={{ marginTop: 2 }}>
+          {cp.xpIntoTier.toLocaleString()} / {CRAWL_PASS_RULES.XP_PER_TIER.toLocaleString()} XP
+        </PixelText>
+      </View>
     </View>
   );
 }

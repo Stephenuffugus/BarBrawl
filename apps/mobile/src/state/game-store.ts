@@ -56,6 +56,7 @@ export interface DailyQuestState {
 export interface GameState {
   userId: string;
   gold: number;
+  respecTokens: number;
   inventory: Loot.Item[];
   roster: CharacterRow[];
   activeIdx: number;
@@ -67,6 +68,8 @@ export interface GameState {
   /** Most recent login rewards — UI shows them once and clears. */
   pendingLoginRewards: readonly LoginReward[];
   dailyQuests: DailyQuestState | null;
+  /** Total XP earned across all characters — feeds Crawl Pass tier. */
+  crawlPassXp: number;
 
   // selectors
   active: () => CharacterRow;
@@ -77,6 +80,10 @@ export interface GameState {
   allocateNode: (classId: ClassId, nodeId: string) => void;
   awardXp: (classId: ClassId, xp: number) => { levelsGained: number };
   bumpMastery: (classId: ClassId, barType: string) => void;
+  /** Reset all allocations on a character. Cost: level² gold or 1 token. */
+  respecCharacter: (classId: ClassId, useToken: boolean) =>
+    | { ok: true; goldSpent: number; tokensSpent: number }
+    | { ok: false; reason: string };
   addItem: (item: Loot.Item) => void;
   addGold: (g: number) => void;
   equipItem: (classId: ClassId, item: Loot.Item) => void;
@@ -122,6 +129,7 @@ export const useGameStore = create<GameState>()(
     (set, get) => ({
       userId: DEMO_USER_ID,
       gold: 250,
+      respecTokens: 5,
       inventory: [],
       roster: freshRoster(),
       activeIdx: 1, // default to Bouncer (index 1)
@@ -131,6 +139,7 @@ export const useGameStore = create<GameState>()(
       loginStreak: freshStreak(),
       pendingLoginRewards: [],
       dailyQuests: null,
+      crawlPassXp: 0,
 
       active: () => get().roster[get().activeIdx]!,
       defenderForBar: (barId) => get().claimedBars.find((b) => b.barId === barId),
@@ -155,15 +164,44 @@ export const useGameStore = create<GameState>()(
 
       awardXp: (classId, xp) => {
         let levelsGained = 0;
-        set((s) => ({
-          roster: s.roster.map((r) => {
+        set((s) => {
+          let tokensGranted = 0;
+          const nextRoster = s.roster.map((r) => {
             if (r.class_id !== classId) return r;
             const result = applyXp({ level: r.level, xpIntoLevel: r.xp }, xp);
             levelsGained = result.levelsGained;
+            tokensGranted = Progression.respecTokensFromLevelUp(r.level, result.state.level);
             return { ...r, level: result.state.level, xp: result.state.xpIntoLevel };
-          }),
-        }));
+          });
+          return {
+            roster: nextRoster,
+            respecTokens: s.respecTokens + tokensGranted,
+            crawlPassXp: s.crawlPassXp + xp,
+          };
+        });
         return { levelsGained };
+      },
+
+      respecCharacter: (classId, useToken) => {
+        const s = get();
+        const row = s.roster.find((r) => r.class_id === classId);
+        if (!row) return { ok: false, reason: 'no_char' };
+        const result = Progression.applyRespec({
+          level: row.level,
+          allocatedNodes: row.allocated_nodes,
+          goldBalance: s.gold,
+          tokenBalance: s.respecTokens,
+          useToken,
+        });
+        if (!result.ok) return { ok: false, reason: result.reason };
+        set((st) => ({
+          gold: result.goldBalance,
+          respecTokens: result.tokenBalance,
+          roster: st.roster.map((r) =>
+            r.class_id === classId ? { ...r, allocated_nodes: [] } : r,
+          ),
+        }));
+        return { ok: true, goldSpent: result.goldSpent, tokensSpent: result.tokensSpent };
       },
 
       bumpMastery: (classId, barType) => {
@@ -370,9 +408,10 @@ export const useGameStore = create<GameState>()(
 
       resetDemo: () => {
         set({
-          gold: 250, inventory: [], roster: freshRoster(), activeIdx: 1,
+          gold: 250, respecTokens: 5, inventory: [], roster: freshRoster(), activeIdx: 1,
           equipped: {}, claimedBars: [], audioMuted: false,
           loginStreak: freshStreak(), pendingLoginRewards: [], dailyQuests: null,
+          crawlPassXp: 0,
         });
       },
     }),
@@ -384,6 +423,7 @@ export const useGameStore = create<GameState>()(
       partialize: (s) => ({
         userId: s.userId,
         gold: s.gold,
+        respecTokens: s.respecTokens,
         inventory: s.inventory,
         roster: s.roster,
         activeIdx: s.activeIdx,
@@ -392,6 +432,7 @@ export const useGameStore = create<GameState>()(
         audioMuted: s.audioMuted,
         loginStreak: s.loginStreak,
         dailyQuests: s.dailyQuests,
+        crawlPassXp: s.crawlPassXp,
       }),
     },
   ),

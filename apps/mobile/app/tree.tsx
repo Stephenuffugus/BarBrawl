@@ -63,7 +63,9 @@ export default function TreeScreen() {
           <PixelText size={12} color={UI.cursor}>◀ BACK</PixelText>
         </Pressable>
         <PixelText size={14} color={UI.text}>{cls.name.toUpperCase()}</PixelText>
-        <PixelText size={11} color={UI.textDim}>SP {skillPointsLeft}</PixelText>
+        <Pressable onPress={() => router.push('/respec')}>
+          <PixelText size={11} color={UI.cursor}>SP {skillPointsLeft} · RESPEC</PixelText>
+        </Pressable>
       </View>
 
       {/* Class picker */}
