@@ -25,6 +25,7 @@ import { VictoryFlash } from '@/components/VictoryFlash';
 import { ResourceBar } from '@/components/ResourceBar';
 import { StatusRow } from '@/components/StatusRow';
 import { ConsumablePanel } from '@/components/ConsumablePanel';
+import { LevelUpFlash } from '@/components/LevelUpFlash';
 import { playSfx } from '@/audio/sfx';
 import { SPRITES, type SpriteId } from '@/design/sprites';
 import { UI, CLASS_ACCENT, BAR_PALETTES, type BarThemeId } from '@/design/palette';
@@ -110,6 +111,8 @@ export default function BattleScreen() {
   const [playerHitSeverity, setPlayerHitSeverity] = useState<'light' | 'heavy'>('light');
   // Attacker pose — brief lunge of player avatar block when attacking.
   const [attackPoseAt, setAttackPoseAt] = useState(0);
+  // Level-up celebration trigger.
+  const [levelUpEvent, setLevelUpEvent] = useState<{ levels: number; newLevel: number } | null>(null);
 
   const awardXp = useGameStore((s) => s.awardXp);
   const addItem = useGameStore((s) => s.addItem);
@@ -292,8 +295,17 @@ export default function BattleScreen() {
         const xpAward = Math.floor(100 * dailyMult * firstConquerMult * tierMult);
         const goldAward = Math.floor(50 * dailyMult * tierMult);
 
-        awardXp(demo.classId, xpAward);
+        const xpResult = awardXp(demo.classId, xpAward);
         addGold(goldAward);
+        if (xpResult.levelsGained > 0) {
+          // Look up the now-current level via a fresh active() snapshot.
+          const newRow = useGameStore.getState().roster.find((r) => r.class_id === demo.classId);
+          if (newRow) {
+            setLevelUpEvent({ levels: xpResult.levelsGained, newLevel: newRow.level });
+            playSfx('level_up');
+            setTimeout(() => setLevelUpEvent(null), 1500);
+          }
+        }
         const item = Loot.rollItem({
           slot: pickSlot(),
           barTier: tier,
@@ -342,6 +354,14 @@ export default function BattleScreen() {
 
       {/* Victory celebration overlay */}
       <VictoryFlash active={result === 'win'} />
+
+      {/* Level-up flourish */}
+      {levelUpEvent ? (
+        <LevelUpFlash
+          levelsGained={levelUpEvent.levels}
+          newLevel={levelUpEvent.newLevel}
+        />
+      ) : null}
       {/* ── enemy area ─────────────────────────────────────── */}
       <View style={{
         height: BATTLE_LAYOUT.enemyAreaHeight,
