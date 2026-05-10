@@ -19,12 +19,16 @@ drop on tier-3+ wins) → Defender placement → Territory → back to Map
 - 7-class roster with persistent allocations, equipment, mastery
 - 21 skill trees (D2-style, prereq lines), respec for level² gold
 - Full battle: rhythm × skills × consumables × status effects
-- Loot: rolls + equip + sell + Resistance Marks
+- Multi-character party: bring a backup, SWAP mid-fight, shared XP
+- Loot: rolls + equip + sell + Resistance Marks + VIP keys
 - Metroidvania gating: tier 4+ requires matching mark
+- VIP keys: ~30% drop on tier-3+, consume for 2× reward runs
 - Defender stationing + decay + coin claim + recall
 - Mastery (49 tracks) + Daily Quests + Login Streak
 - Crawl Pass tier progression + World Boss alert
 - Battle Replay viewer (step / autoplay / reset)
+- Bar nomination form (player-submitted bars with dedup validator)
+- Patrol enemies in dungeons (skirmish encounters, +25 XP each)
 
 `apps/mobile/` shipped:
 - **Design system** (`src/design/`): GBC palette per bar theme, scale
@@ -348,26 +352,24 @@ When you come back to this project, answer these and we can move:
 (blocked on distribution target + Supabase project) plus minor content
 additions.
 
-When you pick this back up, consider in this order:
+When you pick this back up, the depth layer is essentially complete.
+Remaining work is **art, infra, or polish** rather than systems:
 
 1. **Real character + enemy + tile sprite art**. The placeholder
    PixelGrid sprites work but are abstract. Replacing them with
    actual Pokemon Red-style art would visually 10× the demo. Feeds
    via `apps/mobile/src/design/sprites.ts` and `tiles.ts` strings —
    change the data, not the components.
-2. **Multi-character party combat** — bring 2 characters into a fight,
-   SWAP between them mid-battle. Combat engine supports it (initBattle
-   takes any number of combatants); demo currently builds 1 player.
-3. **Trainer LOS encounters in dungeon** — patrol enemies that block
-   paths in dungeon rooms. Adds Pokemon-style overworld depth.
-4. **Distribution target decision** — still the load-bearing blocker
+2. **Distribution target decision** — still the load-bearing blocker
    for native shipping. Web demo runs as-is; native build needs the
    audio swap (expo-av + .wav files) and `@react-native-async-storage/
    async-storage` swap in `state/storage.ts`.
-5. **First edge function deployed end-to-end** — bodies are written
+3. **First edge function deployed end-to-end** — bodies are written
    and `import_map.json` is in place. Smoke-test character-create
    against a real Supabase project.
-6. **Open raid system** (post-launch v1.5) — design sketch in DESIGN_V1.md.
+4. **Open raid system** (post-launch v1.5) — design sketch in DESIGN_V1.md.
+5. **Cosmetics shop** ($, RevenueCat) — deferred until launch infra.
+6. **Bar Dashboard Pro** ($29/mo B2B) — venue owner onboarding.
 
 Data additions still welcome (more anointments, world-boss tiers,
 quest variants, cosmetics) but not blockers.
