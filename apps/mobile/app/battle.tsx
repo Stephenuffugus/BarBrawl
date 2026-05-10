@@ -11,7 +11,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, ScrollView } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Combat, Loot, type RhythmResult, type RhythmQuality } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
@@ -20,8 +20,9 @@ import { HpBar } from '@/components/HpBar';
 import { MenuList, type MenuItem } from '@/components/MenuList';
 import { RhythmBar } from '@/components/RhythmBar';
 import { SkillPanel } from '@/components/SkillPanel';
+import { ShakeFlash } from '@/components/ShakeFlash';
 import { SPRITES, type SpriteId } from '@/design/sprites';
-import { UI, CLASS_ACCENT, type BarThemeId } from '@/design/palette';
+import { UI, CLASS_ACCENT, BAR_PALETTES, type BarThemeId } from '@/design/palette';
 import { PIXEL, BATTLE_LAYOUT } from '@/design/scale';
 import { buildDemoBattle, type DemoBattle } from '@/battle/setup';
 import { useGameStore } from '@/state/game-store';
@@ -33,7 +34,9 @@ const COMMAND_ITEMS: readonly MenuItem[] = [
   { id: 'run',   label: 'RUN' },
 ];
 
-const BAR_THEME: BarThemeId = 'dive';
+function isBarTheme(s: string | undefined): s is BarThemeId {
+  return !!s && s in BAR_PALETTES;
+}
 
 type Phase = 'idle' | 'choosing-skill' | 'awaiting-rhythm' | 'resolving';
 
@@ -55,10 +58,21 @@ function pickSlot(): Loot.ItemSlot {
 }
 
 export default function BattleScreen() {
-  const [demo, setDemo] = useState<DemoBattle>(() => buildDemoBattle());
+  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string }>();
+  const barTheme: BarThemeId = isBarTheme(params.theme) ? params.theme : 'dive';
+  const barLabel = (params.label ?? '').trim() || 'A nameless bar';
+
+  const [demo, setDemo] = useState<DemoBattle>(() => buildDemoBattle({ theme: barTheme, ...(params.barId ? { barId: params.barId } : {}) }));
   const [phase, setPhase] = useState<Phase>('idle');
   const [cursor, setCursor] = useState(0);
   const [pending, setPending] = useState<PendingAction | null>(null);
+
+  // Shake/flash trigger for the focused enemy sprite + crit flag.
+  const [hitToken, setHitToken] = useState(0);
+  const [lastHitWasCrit, setLastHitWasCrit] = useState(false);
+  // Player hit feedback — flashes the player panel and screen edges.
+  const [playerHitAt, setPlayerHitAt] = useState(0);
+  const [playerHitSeverity, setPlayerHitSeverity] = useState<'light' | 'heavy'>('light');
 
   const awardXp = useGameStore((s) => s.awardXp);
   const addItem = useGameStore((s) => s.addItem);
@@ -111,22 +125,44 @@ export default function BattleScreen() {
       ? { kind: 'skill', actorId: demo.playerId, targetId: pending.targetId, skillNodeId: pending.skillNodeId!, rhythm: rResult.quality }
       : { kind: 'basic_attack', actorId: demo.playerId, targetId: pending.targetId, rhythm: rResult.quality };
 
-    let next = Combat.applyPlayerAction(demo.state, action, { rng });
+    const before = demo.state;
+    let next = Combat.applyPlayerAction(before, action, { rng });
     if (!next.result) next = Combat.advanceTurn(next, { rng });
+
+    // Detect whether the focused enemy took a hit; trigger shake/flash.
+    const focusedBefore = before.combatants.find((c) => c.id === pending.targetId);
+    const focusedAfter = next.combatants.find((c) => c.id === pending.targetId);
+    if (focusedBefore && focusedAfter && focusedAfter.stats.hp < focusedBefore.stats.hp) {
+      setHitToken((t) => t + 1);
+      // Crit detection from log (last entry's text contains 'CRITS').
+      const lastEntry = next.log[next.log.length - 1];
+      setLastHitWasCrit(!!lastEntry && /CRITS/.test(lastEntry.text));
+    }
+
+    // Detect whether the player took a hit during the enemy's response.
+    const playerBefore = before.combatants.find((c) => c.kind === 'player');
+    const playerAfter = next.combatants.find((c) => c.kind === 'player');
+    if (playerBefore && playerAfter) {
+      const dmg = playerBefore.stats.hp - playerAfter.stats.hp;
+      if (dmg > 0) {
+        const heavy = dmg / playerBefore.stats.maxHp >= 0.15;
+        setPlayerHitSeverity(heavy ? 'heavy' : 'light');
+        setPlayerHitAt(Date.now());
+      }
+    }
 
     setDemo({ ...demo, state: next });
     setPending(null);
-    // Brief pause so log/HP changes are readable before menu returns.
     setTimeout(() => setPhase('idle'), 350);
   }, [pending, demo]);
 
   // ── replay / continue ─────────────────────────────────────────
   const onReplay = useCallback(() => {
-    setDemo(buildDemoBattle());
+    setDemo(buildDemoBattle({ theme: barTheme, ...(params.barId ? { barId: params.barId } : {}) }));
     setPhase('idle');
     setPending(null);
     setCursor(0);
-  }, []);
+  }, [barTheme, params.barId]);
 
   const onContinue = useCallback(() => {
     if (result === 'win') {
@@ -157,27 +193,47 @@ export default function BattleScreen() {
     return undefined;
   }, [result, demo.classId, awardXp, addGold, addItem]);
 
+  // Time-since-hit drives the screen vignette overlay.
+  const playerFlashActive = Date.now() - playerHitAt < 280;
+
   return (
     <View style={{ flex: 1, backgroundColor: UI.bg, paddingTop: BATTLE_LAYOUT.topPad }}>
+      {/* Screen-edge vignette on player damage */}
+      {playerFlashActive ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute', left: 0, top: 0, right: 0, bottom: 0,
+            borderColor: '#ef0040',
+            borderWidth: playerHitSeverity === 'heavy' ? 16 : 8,
+            zIndex: 100,
+          }}
+        />
+      ) : null}
       {/* ── enemy area ─────────────────────────────────────── */}
       <View style={{
         height: BATTLE_LAYOUT.enemyAreaHeight,
         alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 12,
       }}>
+        <PixelText size={10} color={UI.textDim} style={{ marginBottom: 4 }}>
+          {barLabel.toUpperCase()}
+        </PixelText>
         <View style={{ alignItems: 'center', marginBottom: 8 }}>
           <PixelText size={12} color={UI.text}>{focused.name}</PixelText>
           <View style={{ marginTop: 4 }}>
             <HpBar hp={focused.stats.hp} maxHp={focused.stats.maxHp} widthCells={28} showNumbers={false} />
           </View>
         </View>
-        <View style={{ opacity: focused.stats.hp > 0 ? 1 : 0.3 }}>
-          <PixelGrid
-            sprite={sprite}
-            theme={BAR_THEME}
-            accent={accent}
-            pixelSize={spriteId === 'bar_boss' ? PIXEL : PIXEL + 1}
-          />
-        </View>
+        <ShakeFlash hitToken={hitToken} strong={lastHitWasCrit}>
+          <View style={{ opacity: focused.stats.hp > 0 ? 1 : 0.3 }}>
+            <PixelGrid
+              sprite={sprite}
+              theme={barTheme}
+              accent={accent}
+              pixelSize={spriteId === 'bar_boss' ? PIXEL : PIXEL + 1}
+            />
+          </View>
+        </ShakeFlash>
       </View>
 
       {/* ── battle log ───────────────────────────────────────── */}
@@ -214,6 +270,17 @@ export default function BattleScreen() {
         gap: BATTLE_LAYOUT.panelGap,
       }}>
         <Panel style={{ flex: 1.2 }}>
+          {playerFlashActive ? (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute', left: 0, top: 0, right: 0, bottom: 0,
+                backgroundColor: '#ef0040',
+                opacity: playerHitSeverity === 'heavy' ? 0.45 : 0.25,
+                zIndex: 5,
+              }}
+            />
+          ) : null}
           <PixelText size={13} color={UI.text}>{player.name}</PixelText>
           <PixelText size={10} color={UI.textDim} style={{ marginBottom: 6 }}>LV {player.level ?? 1}</PixelText>
           <HpBar hp={player.stats.hp} maxHp={player.stats.maxHp} widthCells={26} />

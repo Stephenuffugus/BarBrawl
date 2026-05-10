@@ -1,9 +1,21 @@
 // Demo battle bootstrapper. Builds a battle from the active character in
-// the game store + a deterministic enemy lineup. Active character's class
-// drives skills equipped + sprite accent + skill tree allocation.
+// the game store + an enemy lineup themed by bar type. Active character's
+// class drives skills equipped + sprite accent.
 
 import { Combat, getClass, toRuntime, type ClassId } from '@barbrawl/game-core';
 import { useGameStore } from '@/state/game-store';
+import type { BarThemeId } from '@/design/palette';
+
+/** Two normal enemies + one boss per bar theme. */
+const ENEMY_LINEUPS: Record<BarThemeId, { patron: string; tough: string; boss: string }> = {
+  dive:      { patron: 'Drunken Patron',  tough: 'Pool Cue Bruiser',  boss: 'Bar Owner' },
+  pub:       { patron: 'Regular',         tough: 'Old Timer',         boss: 'Publican' },
+  sports:    { patron: 'Loud Fan',        tough: 'Bookie',            boss: 'Coach' },
+  cocktail:  { patron: 'Mixologist',      tough: 'Bottle Service',    boss: 'Sommelier' },
+  wine:      { patron: 'Vineyard Snob',   tough: 'Cellar Master',     boss: 'Vintner' },
+  brewery:   { patron: 'Hop Head',        tough: 'Cooper',            boss: 'Brewmaster' },
+  nightclub: { patron: 'Doorman',         tough: 'Promoter',          boss: 'DJ' },
+};
 
 /** Bouncer's 3 equipped actives — what the SkillPanel shows.
  *  When the active char isn't a Bouncer, we look up that class's actives. */
@@ -47,24 +59,32 @@ export interface DemoBattle {
   classId: ClassId;
 }
 
+export interface BuildBattleOptions {
+  /** Bar theme drives enemy names and sprite accent. */
+  theme?: BarThemeId;
+  /** Bar id — feeds the seed for deterministic enemy stats per location. */
+  barId?: string;
+}
+
 /** Build a battle from the current active character in the store. */
-export function buildDemoBattle(): DemoBattle {
+export function buildDemoBattle(opts: BuildBattleOptions = {}): DemoBattle {
+  const theme: BarThemeId = opts.theme ?? 'dive';
+  const lineup = ENEMY_LINEUPS[theme];
   const active = useGameStore.getState().active();
   const equipped = defaultActivesFor(active.class_id);
   const runtime = toRuntime({
     ...active,
-    // bias level for a clean demo if char hasn't leveled yet
     level: Math.max(active.level, 5),
   });
 
   const enemyTemplates: Combat.EnemyTemplate[] = [
-    { id: 'patron', name: 'Drunken Patron', barAtkMod: 1.0, barDefMod: 1.0 },
-    { id: 'boss',   name: 'Bar Owner',      isBoss: true, barAtkMod: 1.0, barDefMod: 1.0 },
+    { id: 'patron', name: lineup.patron, barAtkMod: 1.0, barDefMod: 1.0 },
+    { id: 'boss',   name: lineup.boss,   isBoss: true, barAtkMod: 1.0, barDefMod: 1.0 },
   ];
 
   let state = Combat.initBattle({
-    battleId: 'demo-battle-1',
-    seed: 'demo-seed',
+    battleId: `demo-${opts.barId ?? 'bar'}-${Date.now()}`,
+    seed: `${opts.barId ?? 'demo'}:${theme}`,
     player: runtime,
     enemyTemplates,
   });

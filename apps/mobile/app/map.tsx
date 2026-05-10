@@ -64,9 +64,14 @@ export default function MapScreen() {
 
   const enterDoor = useCallback(() => {
     if (!adjacentDoor) return;
-    // For the v1 demo, all bars route to the same battle screen.
-    // The bar id/theme will param the screen once battle accepts route params.
-    router.push('/battle');
+    router.push({
+      pathname: '/battle',
+      params: {
+        barId: adjacentDoor.barId ?? '',
+        theme: adjacentDoor.theme ?? 'dive',
+        label: adjacentDoor.label ?? 'Bar',
+      },
+    });
   }, [adjacentDoor]);
 
   // Keyboard nav on web (WASD + arrows + Enter for A).

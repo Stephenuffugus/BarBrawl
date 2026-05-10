@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { UI } from '@/design/palette';
 import { PIXEL } from '@/design/scale';
@@ -7,21 +7,51 @@ import { PixelText } from './PixelText';
 export interface HpBarProps {
   hp: number;
   maxHp: number;
-  /** Total bar width in logical px. Default 32 cells * PIXEL. */
+  /** Total bar width in cells (each PIXEL wide). Default 32. */
   widthCells?: number;
   showNumbers?: boolean;
   label?: string;
+  /** ms to interpolate from previous hp to new hp. 0 disables. */
+  drainMs?: number;
 }
 
 /**
- * Pixel-grid HP bar. Width is a count of "cells" (each PIXEL wide).
- * Color shifts: green > 50%, amber > 25%, red below.
+ * Pixel-grid HP bar with an animated drain. When the `hp` prop drops, the
+ * displayed value tweens to the new value over `drainMs` (default 250ms)
+ * giving the satisfying "Pokemon health bar drain" feel.
  *
- * The bar is a 1-px black border with a 4-px-tall green/amber/red fill
- * and per-cell tick marks every 4 cells for legibility.
+ * Color tiers: green > 50%, amber > 25%, red below.
  */
-export function HpBar({ hp, maxHp, widthCells = 32, showNumbers = true, label }: HpBarProps) {
-  const pct = Math.max(0, Math.min(1, maxHp > 0 ? hp / maxHp : 0));
+export function HpBar({
+  hp, maxHp, widthCells = 32, showNumbers = true, label, drainMs = 250,
+}: HpBarProps) {
+  const [display, setDisplay] = useState(hp);
+  const prev = useRef(hp);
+  const rafId = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (drainMs <= 0 || hp === prev.current) {
+      setDisplay(hp);
+      prev.current = hp;
+      return;
+    }
+    const start = performance.now();
+    const from = prev.current;
+    const to = hp;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / drainMs);
+      const eased = easeOutCubic(t);
+      setDisplay(Math.round(from + (to - from) * eased));
+      if (t < 1) rafId.current = requestAnimationFrame(tick);
+      else prev.current = to;
+    };
+    rafId.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafId.current !== null) cancelAnimationFrame(rafId.current);
+    };
+  }, [hp, drainMs]);
+
+  const pct = Math.max(0, Math.min(1, maxHp > 0 ? display / maxHp : 0));
   const filledCells = Math.ceil(widthCells * pct);
   const barColor = pct > 0.5 ? UI.hpFull : pct > 0.25 ? UI.hpHalf : UI.hpLow;
 
@@ -50,10 +80,14 @@ export function HpBar({ hp, maxHp, widthCells = 32, showNumbers = true, label }:
         </View>
         {showNumbers ? (
           <PixelText size={10} color={UI.text} style={{ marginLeft: 6 }}>
-            {hp}/{maxHp}
+            {Math.max(0, display)}/{maxHp}
           </PixelText>
         ) : null}
       </View>
     </View>
   );
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
 }
