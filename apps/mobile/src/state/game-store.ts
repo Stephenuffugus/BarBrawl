@@ -1,10 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import {
-  applyXp, createStarterRoster, Bars, Events, Progression,
+  applyXp, createStarterRoster, Bars, Events, Loot, Progression,
   type NewCharacterRow, type ClassId,
 } from '@barbrawl/game-core';
-import type { Loot } from '@barbrawl/game-core';
 import { portableStorage } from './storage';
 
 const { applyLogin, freshStreak } = Events;
@@ -145,6 +144,14 @@ export interface GameState {
   claimDailyQuest: (questId: string) => boolean;
   toggleMuted: () => void;
   resetDemo: () => void;
+  /** Dev cheat — give the active char a fixed level + clear allocations. */
+  devSetActiveLevel: (level: number) => void;
+  /** Dev cheat — drop one of every consumable + +1 stack into active char. */
+  devFillConsumables: () => void;
+  /** Dev cheat — grant all marks + 3 VIP keys per theme. */
+  devGrantGating: () => void;
+  /** Dev cheat — roll N legendary items into the inventory. */
+  devGrantLoot: (count: number, rarity?: 'common'|'uncommon'|'rare'|'epic'|'legendary') => void;
 }
 
 // Starter stash so demo players have something to use on the ITEM button.
@@ -573,6 +580,56 @@ export const useGameStore = create<GameState>()(
           crawlPassXp: 0, marks: [], vipKeys: {}, barClears: {}, lastBattle: null,
           nominations: [],
         });
+      },
+
+      devSetActiveLevel: (level) => {
+        const lvl = Math.max(1, Math.min(1000, level));
+        set((s) => ({
+          roster: s.roster.map((r, i) =>
+            i === s.activeIdx ? { ...r, level: lvl, xp: 0 } : r,
+          ),
+        }));
+      },
+
+      devFillConsumables: () => {
+        const all: Record<string, number> = {
+          small_brew: 5, house_special: 3, shot_of_courage: 3,
+          iron_tonic: 3, focus_vial: 3, emergency_elixir: 2,
+          palette_cleanser: 3,
+        };
+        set((s) => ({
+          roster: s.roster.map((r) => ({
+            ...r,
+            consumables: { ...(r.consumables as Record<string, number>), ...all },
+          })),
+        }));
+      },
+
+      devGrantGating: () => {
+        const allMarks = [
+          'mark_blunt','mark_edged','mark_impact','mark_toxic',
+          'mark_shadow','mark_heat','mark_sonic',
+        ];
+        const allVipKeys: Record<string, number> = {
+          dive: 3, pub: 3, sports: 3, cocktail: 3,
+          wine: 3, brewery: 3, nightclub: 3,
+        };
+        set({ marks: allMarks, vipKeys: allVipKeys });
+      },
+
+      devGrantLoot: (count, rarity = 'legendary') => {
+        const slots: Loot.ItemSlot[] = ['weapon', 'outfit', 'footwear', 'trinket', 'mark'];
+        const items: Loot.Item[] = [];
+        for (let i = 0; i < count; i++) {
+          const slot = slots[i % slots.length]!;
+          items.push(Loot.rollItem({
+            slot, barTier: 6,
+            rarityOverride: rarity,
+            rng: Math.random,
+            itemIdGen: () => `dev-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+          }));
+        }
+        set((s) => ({ inventory: [...s.inventory, ...items] }));
       },
     }),
     {

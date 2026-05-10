@@ -174,6 +174,17 @@ export default function Title() {
       </Pressable>
 
       <Pressable
+        onPress={() => router.push('/dev')}
+        onLongPress={() => router.push('/dev')}
+        style={{
+          marginTop: 12,
+          paddingHorizontal: 12, paddingVertical: 4,
+        }}
+      >
+        <PixelText size={9} color={UI.textDim}>· DEV ·</PixelText>
+      </Pressable>
+
+      <Pressable
         onPress={() => router.push('/battle')}
         style={[menuBtn, { marginTop: 12 }]}
       >
