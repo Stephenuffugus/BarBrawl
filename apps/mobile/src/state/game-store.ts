@@ -15,12 +15,17 @@ const SCHEMA_VERSION = 1;
 
 type CharacterRow = NewCharacterRow;
 
+/** Per-character equipped slot map. Stores item IDs that resolve via inventory[]. */
+export type EquippedSlots = Partial<Record<Loot.ItemSlot, string>>;
+
 export interface GameState {
   userId: string;
   gold: number;
   inventory: Loot.Item[];
   roster: CharacterRow[];
   activeIdx: number;
+  /** equipped[classId][slot] → itemId. */
+  equipped: Record<string, EquippedSlots>;
 
   // selectors
   active: () => CharacterRow;
@@ -31,6 +36,8 @@ export interface GameState {
   awardXp: (classId: ClassId, xp: number) => { levelsGained: number };
   addItem: (item: Loot.Item) => void;
   addGold: (g: number) => void;
+  equipItem: (classId: ClassId, item: Loot.Item) => void;
+  unequipSlot: (classId: ClassId, slot: Loot.ItemSlot) => void;
   resetDemo: () => void;
 }
 
@@ -53,6 +60,7 @@ export const useGameStore = create<GameState>()(
       inventory: [],
       roster: freshRoster(),
       activeIdx: 1, // default to Bouncer (index 1)
+      equipped: {},
 
       active: () => get().roster[get().activeIdx]!,
 
@@ -95,8 +103,25 @@ export const useGameStore = create<GameState>()(
         set((s) => ({ gold: s.gold + g }));
       },
 
+      equipItem: (classId, item) => {
+        set((s) => ({
+          equipped: {
+            ...s.equipped,
+            [classId]: { ...(s.equipped[classId] ?? {}), [item.slot]: item.id },
+          },
+        }));
+      },
+
+      unequipSlot: (classId, slot) => {
+        set((s) => {
+          const cur = { ...(s.equipped[classId] ?? {}) };
+          delete cur[slot];
+          return { equipped: { ...s.equipped, [classId]: cur } };
+        });
+      },
+
       resetDemo: () => {
-        set({ gold: 250, inventory: [], roster: freshRoster(), activeIdx: 1 });
+        set({ gold: 250, inventory: [], roster: freshRoster(), activeIdx: 1, equipped: {} });
       },
     }),
     {
@@ -110,6 +135,7 @@ export const useGameStore = create<GameState>()(
         inventory: s.inventory,
         roster: s.roster,
         activeIdx: s.activeIdx,
+        equipped: s.equipped,
       }),
     },
   ),

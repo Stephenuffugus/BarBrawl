@@ -30,6 +30,7 @@ export default function MapScreen() {
   const [col, setCol] = useState(SPAWN_COL);
   const [row, setRow] = useState(SPAWN_ROW);
   const [dir, setDir] = useState<Direction>('down');
+  const [step, setStep] = useState(0);
 
   // What door (if any) is the player standing on or adjacent to?
   const adjacentDoor: DoorTile = useMemo(() => {
@@ -60,6 +61,7 @@ export default function MapScreen() {
     if (!TILES[t].passable) return;
     setCol(nc);
     setRow(nr);
+    setStep((s) => s + 1);
   }, [col, row]);
 
   const enterDoor = useCallback(() => {
@@ -116,7 +118,7 @@ export default function MapScreen() {
           transformOrigin: 'top left' as never,
         }}>
           <Tilemap />
-          <PlayerSprite col={col} row={row} direction={dir} />
+          <PlayerSprite col={col} row={row} direction={dir} step={step} />
         </View>
       </ScrollView>
 

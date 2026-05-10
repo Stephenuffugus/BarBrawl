@@ -34,6 +34,7 @@ export default function DungeonScreen() {
   const [col, setCol] = useState(spawn.col);
   const [row, setRow] = useState(spawn.row);
   const [dir, setDir] = useState<Direction>('right');
+  const [step, setStep] = useState(0);
 
   // Reset position on room change.
   useEffect(() => {
@@ -71,6 +72,7 @@ export default function DungeonScreen() {
     if (!def.passable) return;
     setCol(nc);
     setRow(nr);
+    setStep((s) => s + 1);
     // Apply tile effect.
     if (def.effect === 'advance') {
       setTimeout(advanceRoom, 200);
@@ -124,31 +126,15 @@ export default function DungeonScreen() {
               palette={palette}
             />
           )))}
-          {/* Player overlay */}
-          <View style={{
-            position: 'absolute',
-            left: col * TILE_PX,
-            top: row * TILE_PX,
-            width: TILE_PX,
-            height: TILE_PX,
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10,
-          }}>
-            <View style={{
-              width: TILE_PX - 8, height: TILE_PX - 8,
-              backgroundColor: '#181828',
-              borderColor: '#000', borderWidth: 2,
-            }} />
-            <View style={{
-              position: 'absolute',
-              top: 4,
-              left: TILE_PX / 2 - (TILE_PX - 12) / 2,
-              width: TILE_PX - 12, height: 4,
-              backgroundColor: accent,
-            }} />
-            <DirectionDot direction={dir} tilePx={TILE_PX} />
-          </View>
+          {/* Player overlay (animated) */}
+          <PlayerOverlay
+            col={col}
+            row={row}
+            direction={dir}
+            tilePx={TILE_PX}
+            accent={accent}
+            step={step}
+          />
         </View>
       </View>
 
@@ -211,19 +197,58 @@ function TileView({
   );
 }
 
-function DirectionDot({ direction, tilePx }: { direction: Direction; tilePx: number }) {
+function PlayerOverlay({
+  col, row, direction, tilePx, accent, step,
+}: {
+  col: number; row: number; direction: Direction; tilePx: number; accent: string; step: number;
+}) {
+  const stepping = step % 2 === 1;
+  const bodyTop = 4 + (stepping ? 2 : 0);
+  const legShift = stepping
+    ? (direction === 'left' ? -2 : direction === 'right' ? 2 : 0)
+    : 0;
   const dot = {
     up:    { left: tilePx / 2 - 2, top: 6 },
     down:  { left: tilePx / 2 - 2, top: tilePx - 12 },
     left:  { left: 6, top: tilePx / 2 - 2 },
     right: { left: tilePx - 12, top: tilePx / 2 - 2 },
   }[direction];
+
   return (
     <View style={{
       position: 'absolute',
-      ...dot,
-      width: 4, height: 4,
-      backgroundColor: '#f8f8f8',
-    }} />
+      left: col * tilePx,
+      top: row * tilePx,
+      width: tilePx,
+      height: tilePx,
+      zIndex: 10,
+    }}>
+      <View style={{
+        position: 'absolute',
+        left: 4, top: bodyTop,
+        width: tilePx - 8, height: tilePx - 8,
+        backgroundColor: '#181828',
+        borderColor: '#000', borderWidth: 2,
+      }} />
+      <View style={{
+        position: 'absolute',
+        left: 4, top: bodyTop - 2,
+        width: tilePx - 8, height: 4,
+        backgroundColor: accent,
+      }} />
+      <View style={{
+        position: 'absolute',
+        left: tilePx / 2 - 2 + legShift,
+        top: bodyTop + tilePx - 8,
+        width: 4, height: 3,
+        backgroundColor: '#000',
+      }} />
+      <View style={{
+        position: 'absolute',
+        ...dot,
+        width: 4, height: 4,
+        backgroundColor: '#f8f8f8',
+      }} />
+    </View>
   );
 }

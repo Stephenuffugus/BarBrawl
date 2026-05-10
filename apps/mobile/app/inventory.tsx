@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
-import type { Loot } from '@barbrawl/game-core';
+import { getClass, type ClassId, type Loot } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
 import { UI } from '@/design/palette';
@@ -32,13 +32,21 @@ const SLOT_FILTERS: readonly (Loot.ItemSlot | 'all')[] = [
 ];
 
 export default function InventoryScreen() {
-  const { inventory, gold } = useGameStore();
+  const { inventory, gold, roster, activeIdx, equipped, equipItem } = useGameStore();
+  const activeChar = roster[activeIdx]!;
+  const activeCls = getClass(activeChar.class_id);
+  const charEquipped = equipped[activeChar.class_id] ?? {};
+
   const [filter, setFilter] = useState<Loot.ItemSlot | 'all'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const visible = filter === 'all'
     ? inventory
     : inventory.filter((it) => it.slot === filter);
+
+  const onEquip = (item: Loot.Item) => {
+    equipItem(activeChar.class_id as ClassId, item);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: UI.bg, paddingTop: 24 }}>
@@ -49,6 +57,13 @@ export default function InventoryScreen() {
         <PixelText size={14} color={UI.text}>INVENTORY</PixelText>
         <PixelText size={11} color={UI.cursor}>{gold} G</PixelText>
       </View>
+
+      <Panel style={{ marginHorizontal: 12, marginBottom: 8 }}>
+        <PixelText size={10} color={UI.textDim}>EQUIPPING FOR</PixelText>
+        <PixelText size={13} color={UI.text} style={{ marginTop: 2 }}>
+          {activeCls.name}
+        </PixelText>
+      </Panel>
 
       {/* Slot filter chips */}
       <ScrollView
@@ -88,7 +103,12 @@ export default function InventoryScreen() {
             key={item.id}
             onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}
           >
-            <ItemCard item={item} expanded={expandedId === item.id} />
+            <ItemCard
+              item={item}
+              expanded={expandedId === item.id}
+              equipped={charEquipped[item.slot] === item.id}
+              onEquip={() => onEquip(item)}
+            />
           </Pressable>
         ))}
       </ScrollView>
@@ -96,13 +116,16 @@ export default function InventoryScreen() {
   );
 }
 
-function ItemCard({ item, expanded }: { item: Loot.Item; expanded: boolean }) {
+function ItemCard({ item, expanded, equipped, onEquip }: {
+  item: Loot.Item; expanded: boolean; equipped: boolean; onEquip: () => void;
+}) {
   const rColor = RARITY_COLOR[item.rarity];
   return (
     <Panel style={{ borderColor: rColor, borderWidth: PIXEL }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
         <PixelText size={11} color={rColor}>
           {item.rarity.toUpperCase()} · {SLOT_LABEL[item.slot]}
+          {equipped ? ' · EQUIPPED' : ''}
         </PixelText>
         <PixelText size={11} color={UI.textDim}>iLVL {item.ilvl}</PixelText>
       </View>
@@ -134,6 +157,19 @@ function ItemCard({ item, expanded }: { item: Loot.Item; expanded: boolean }) {
         <PixelText size={9} color={UI.textDim} style={{ marginTop: 4 }}>
           {item.prefixes.length + item.suffixes.length} affix{item.prefixes.length + item.suffixes.length === 1 ? '' : 'es'} — tap to view
         </PixelText>
+      ) : null}
+
+      {expanded && !equipped ? (
+        <Pressable
+          onPress={(e) => { e.stopPropagation?.(); onEquip(); }}
+          style={{
+            alignItems: 'center', paddingVertical: 6, marginTop: 8,
+            borderColor: UI.cursor, borderWidth: 2,
+            backgroundColor: UI.bg,
+          }}
+        >
+          <PixelText size={12} color={UI.cursor}>▶ EQUIP</PixelText>
+        </Pressable>
       ) : null}
     </Panel>
   );

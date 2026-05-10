@@ -1,19 +1,24 @@
 // Roster screen — pick which of your 7 characters is active. Active class
-// is read by battle, tree, and rewards screens.
+// is read by battle, tree, preview, and rewards screens.
 
 import React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
-import { getClass } from '@barbrawl/game-core';
+import { getClass, type ClassId, type Loot } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
 import { HpBar } from '@/components/HpBar';
 import { UI, CLASS_ACCENT } from '@/design/palette';
 import { PIXEL } from '@/design/scale';
 import { useGameStore } from '@/state/game-store';
+import { computeEffectiveStats } from '@/state/effective-stats';
+
+const SLOT_SHORT: Record<Loot.ItemSlot, string> = {
+  weapon: 'WPN', outfit: 'FIT', footwear: 'FT', trinket: 'TRK', mark: 'MRK',
+};
 
 export default function RosterScreen() {
-  const { roster, activeIdx, setActive } = useGameStore();
+  const { roster, activeIdx, setActive, equipped, inventory } = useGameStore();
 
   return (
     <View style={{ flex: 1, backgroundColor: UI.bg, paddingTop: 24 }}>
@@ -30,8 +35,11 @@ export default function RosterScreen() {
           const cls = getClass(char.class_id);
           const isActive = idx === activeIdx;
           const accent = CLASS_ACCENT[char.class_id as keyof typeof CLASS_ACCENT];
-          // Approximate HP pool from base stats + per-level scaling.
-          const hp = cls.baseStats.hp + (char.level - 1) * 6;
+          const charEquipped = equipped[char.class_id] ?? {};
+          const stats = computeEffectiveStats(
+            char.class_id as ClassId, char.level, charEquipped, inventory,
+          );
+          const equippedCount = Object.keys(charEquipped).length;
           return (
             <Pressable
               key={char.class_id}
@@ -45,7 +53,6 @@ export default function RosterScreen() {
                 }}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  {/* class accent block */}
                   <View style={{
                     width: 36, height: 36,
                     backgroundColor: accent,
@@ -66,22 +73,36 @@ export default function RosterScreen() {
                       {cls.tagline}
                     </PixelText>
                     <View style={{ marginTop: 6 }}>
-                      <HpBar hp={hp} maxHp={hp} widthCells={20} showNumbers={false} />
+                      <HpBar hp={stats.hp} maxHp={stats.hp} widthCells={20} showNumbers={false} />
                     </View>
                   </View>
                 </View>
 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                  <Stat label="ATK" value={cls.baseStats.atk} />
-                  <Stat label="DEF" value={cls.baseStats.def} />
-                  <Stat label="SPD" value={cls.baseStats.spd} />
-                  <Stat label="LCK" value={cls.baseStats.luck} />
+                  <Stat label="ATK" value={stats.atk} bumped={stats.atk > cls.baseStats.atk + (char.level - 1) * 2} />
+                  <Stat label="DEF" value={stats.def} bumped={stats.def > cls.baseStats.def + (char.level - 1)} />
+                  <Stat label="SPD" value={stats.spd} bumped={stats.spd > Math.floor(cls.baseStats.spd + (char.level - 1) * 0.5)} />
+                  <Stat label="LCK" value={stats.luck} bumped={stats.luck > cls.baseStats.luck} />
                   <Stat label="SP" value={Math.max(0, char.level - char.allocated_nodes.length)} highlight />
                 </View>
 
+                {/* Equipped slot indicator */}
+                {equippedCount > 0 ? (
+                  <View style={{ flexDirection: 'row', gap: 4, marginTop: 8, flexWrap: 'wrap' }}>
+                    {(Object.keys(charEquipped) as Loot.ItemSlot[]).map((slot) => (
+                      <View key={slot} style={{
+                        paddingHorizontal: 4, paddingVertical: 2,
+                        backgroundColor: UI.bg, borderColor: UI.cursor, borderWidth: 1,
+                      }}>
+                        <PixelText size={8} color={UI.cursor}>{SLOT_SHORT[slot]}</PixelText>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+
                 {isActive ? (
                   <PixelText size={10} color={UI.cursor} style={{ marginTop: 8 }}>
-                    ▶ ACTIVE — {char.allocated_nodes.length} nodes allocated
+                    ▶ ACTIVE — {char.allocated_nodes.length} nodes · {equippedCount}/5 slots
                   </PixelText>
                 ) : null}
               </Panel>
@@ -93,11 +114,12 @@ export default function RosterScreen() {
   );
 }
 
-function Stat({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+function Stat({ label, value, highlight, bumped }: { label: string; value: number; highlight?: boolean; bumped?: boolean }) {
+  const color = highlight ? UI.cursor : bumped ? UI.hpFull : UI.text;
   return (
     <View style={{ alignItems: 'center', minWidth: 36 }}>
       <PixelText size={9} color={UI.textDim}>{label}</PixelText>
-      <PixelText size={12} color={highlight ? UI.cursor : UI.text}>{value}</PixelText>
+      <PixelText size={12} color={color}>{value}{bumped ? '+' : ''}</PixelText>
     </View>
   );
 }

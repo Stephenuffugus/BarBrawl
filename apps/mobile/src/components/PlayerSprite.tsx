@@ -13,6 +13,8 @@ export interface PlayerSpriteProps {
   accentClassId?: keyof typeof CLASS_ACCENT;
   /** Override tile size if rendering at a non-default scale. */
   tileSize?: number;
+  /** Step counter — each move increments. Even steps = stand, odd = step. */
+  step?: number;
 }
 
 /**
@@ -22,11 +24,12 @@ export interface PlayerSpriteProps {
  * later.
  */
 export function PlayerSprite({
-  col, row, direction, accentClassId = 'brewer', tileSize = TILE_LOGICAL,
+  col, row, direction, accentClassId = 'brewer', tileSize = TILE_LOGICAL, step = 0,
 }: PlayerSpriteProps) {
   const accent = CLASS_ACCENT[accentClassId];
   const x = col * tileSize;
   const y = row * tileSize;
+  const stepping = step % 2 === 1;
 
   // Dot offsets per direction — rough "facing" indicator.
   const dot = {
@@ -35,6 +38,14 @@ export function PlayerSprite({
     left:  { left: 8, top: tileSize / 2 - 2 },
     right: { left: tileSize - 14, top: tileSize / 2 - 2 },
   }[direction];
+
+  // Walk frame: shift body 2px down on odd steps, raise one "leg" via
+  // a small offset block at the base. Mimics 8-bit walk animations.
+  const bodyTop = tileSize / 4 + (stepping ? 2 : 0);
+  // Per-direction leg shadow offset (one foot forward).
+  const legShift = stepping
+    ? (direction === 'left' ? -2 : direction === 'right' ? 2 : 0)
+    : 0;
 
   return (
     <View
@@ -48,7 +59,7 @@ export function PlayerSprite({
       {/* body */}
       <View style={{
         position: 'absolute',
-        left: tileSize / 4, top: tileSize / 4,
+        left: tileSize / 4, top: bodyTop,
         width: tileSize / 2, height: tileSize / 2,
         backgroundColor: '#181828',
         borderColor: '#000', borderWidth: 2,
@@ -56,9 +67,17 @@ export function PlayerSprite({
       {/* hat / accent strip */}
       <View style={{
         position: 'absolute',
-        left: tileSize / 4, top: tileSize / 4 - 2,
+        left: tileSize / 4, top: bodyTop - 2,
         width: tileSize / 2, height: 4,
         backgroundColor: accent,
+      }} />
+      {/* leg block (small foot-forward shadow) */}
+      <View style={{
+        position: 'absolute',
+        left: tileSize / 4 + tileSize / 4 - 2 + legShift,
+        top: bodyTop + tileSize / 2,
+        width: 4, height: 3,
+        backgroundColor: '#000',
       }} />
       {/* direction dot */}
       <View style={{
