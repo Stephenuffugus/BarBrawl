@@ -125,7 +125,25 @@ class (Summoner deferred to post-launch class expansion).
   grants every 10 levels; typed errors for insufficient funds.
 - `src/progression/battle-summary.ts` — translates finalized
   `BattleState` → `BattleSummary` for quest progress hooks.
-- **338 unit tests pass** across 27 suites. Root `pnpm -r typecheck` +
+- `src/security/` — **anti-cheat layer** (new):
+  - `hmac.ts` — WebCrypto HMAC-SHA256 request signing, replay-protection
+    nonce store interface, in-memory store, constant-time compare.
+  - `rate-limit.ts` — pure token-bucket with pluggable storage; per-route
+    DEFAULT_LIMITS calibrated to spec §8.3 (battle.action 1/500ms etc.).
+  - `gps.ts` — speed-of-travel + teleport + accuracy + timestamp
+    heuristics, sliding-window scoring; suspicion in [0,1].
+  - `battle-validator.ts` — replays a battle from (initialState, actions[])
+    through the live combat engine, compares vs claimed final. result +
+    HP equality is load-bearing; loot is rolled post-validate.
+  - `seeded-rng.ts` — Mulberry32 seeded RNG used by validator + edge
+    functions for deterministic per-action streams.
+- `src/bars/nomination.ts` — **bar nomination + owner claim flow** (new):
+  - `validateNomination` — name+address+type+coord validation, geo+name
+    dedup against existing bars/nominations (Sørensen-Dice bigram).
+  - `createClaim`/`verifyClaim`/`approveClaim`/`rejectClaim` — owner
+    claim state machine (pending → verified → approved/rejected/expired)
+    with one-time challenge tokens, 30-day TTL, 4 challenge methods.
+- **408 unit tests pass** across 33 suites. Root `pnpm -r typecheck` +
   `pnpm -r lint` + `pnpm -r test` all green.
 
 **Supabase additions:**
@@ -135,11 +153,19 @@ class (Summoner deferred to post-launch class expansion).
   table with equipped_character_id, equipped_slot, chain_asset_id
   (schema-forward for blockchain hook), unique-equipped-per-slot index,
   and RLS policies.
+- `supabase/migrations/20260510000001_battle_state_and_owner_claims.sql`
+  — extends `battles` with `seed`/`status`/`state_json`/
+  `initial_state_json`/`action_log`/`updated_at` (replay + validator
+  support); adds `bar_owner_claims` table with RLS for spec §5.11.
 - `supabase/seed.sql` — 15 mock bars across NYC, SF, Austin covering
   all 7 bar types. Applied by `supabase db reset`.
-- `supabase/functions/` — 4 edge-function skeletons (character-create,
-  battle-start, battle-action, battle-end) with typed request/response
-  contracts and documented integration shape with game-core.
+- `supabase/functions/` — 4 edge functions, **bodies wired** (no longer
+  stubs). character-create, battle-start, battle-action, battle-end all
+  use the standard prelude (HMAC verify + JWT auth + rate-limit) and
+  re-export game-core via `_shared/game-core.ts`. battle-end re-derives
+  the final state from the action log via `validateBattleLog` before
+  awarding loot/XP. `import_map.json` aliases `@barbrawl/game-core` to
+  the workspace source. Deno-runtime; not typecked locally.
 
 **Mobile build fixes:**
 - eslint downgraded from `^9.0.0` to `^8.57.0` + `@typescript-eslint/*`
@@ -240,6 +266,9 @@ decision. Recommended starting point when resuming.
 - [ ] Phase 10: Bar Claiming & Owner Dashboard — workflow/UI concern
 - [x] Phase 11: Social & Leaderboards — **ranking logic complete**. UI TBD.
 - [x] Phase 12: Global Events — **world boss + seasonal + Crawl Pass math complete**. UI + scheduler TBD.
+- [x] Phase 13a: Anti-cheat layer — **HMAC signing, rate limit, GPS spoof, battle validator complete**. Plumbed into edge function prelude.
+- [x] Phase 13b: Edge function bodies — **all 4 wired** (character-create, battle-start, battle-action, battle-end). Deploy-ready pending Supabase project + env (`BB_HMAC_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`).
+- [x] Phase 13c: Bar nomination + owner claim — **logic + DB schema complete**. Submission flow + admin review UI TBD.
 - [ ] Phase 13: Polish, Balancing & Beta
 - [ ] Phase 14: Launch
 
@@ -257,19 +286,19 @@ additions.
 
 When you pick this back up, consider in this order:
 
-1. **Rhythm resolver math** — portable: given a tap-delta-ms return a
-   RhythmQuality. Pairs with client-side UI later.
-2. **Anti-cheat hashing utilities** — request signing, rate-limit bucket
-   counters. Partially a Supabase RLS/edge concern, partially in-package.
-3. **Rhythm UI + input wiring** — client-side animation, tap detection.
-   Blocked on distribution target.
-4. **First edge function deployed end-to-end** — wire
-   `supabase/functions/import_map.json` so Deno can import game-core,
-   deploy character-create, smoke-test. Blocked on Supabase project.
-5. **Battle replay viewer** — game-core's deterministic RNG makes this
-   trivial; UI layer needed.
-6. **Bar nomination + owner verification flow** — spec §5.11 workflow.
-7. **Open raid system** (post-launch v1.5) — design sketch in DESIGN_V1.md.
+1. **Distribution target decision** — still the load-bearing blocker for
+   UI work. Recommendation on file: web-first (Leaflet/CartoDB), native
+   later. Reasoning in §"Open decisions".
+2. **First edge function deployed end-to-end** — bodies are written and
+   import_map is in place. Smoke-test character-create against a real
+   Supabase project; once it works, the other 3 follow trivially.
+3. **Battle replay viewer** — game-core's deterministic RNG + the new
+   `replayBattle` in security/battle-validator make this nearly free; UI
+   layer needed (blocked on distribution).
+4. **Open raid system** (post-launch v1.5) — design sketch in DESIGN_V1.md.
+
+Data additions still welcome (more anointments, world-boss tiers,
+quest variants, cosmetics) but not blockers.
 
 Data additions welcome but not blockers: more class anointments, quest
 variants, cosmetic rewards, world-boss tiers.

@@ -2,55 +2,46 @@
 // Bootstraps the 7-character starter roster for a newly authenticated user.
 // Idempotent: if any characters already exist, returns them without re-creating.
 //
-// Called once on signup (or on first login if signup didn't run this).
-//
-// Request body: (none required — user comes from JWT)
-// Response: { characters: { id: string; class_id: string; name: string }[] }
+// Requires: HMAC-signed envelope + Supabase JWT.
+// Rate limit: route 'character.create' (1 per 30s per user).
 
-// NOTE: Runtime = Deno. The imports below are how this will wire up once
-// the import_map is set. Until then, this file is a typed contract stub.
-
-// import { createStarterRoster } from '@barbrawl/game-core';
-// import { serve } from 'https://deno.land/std/http/server.ts';
-// import { createClient } from 'https://esm.sh/@supabase/supabase-js';
+// @ts-expect-error — Deno std import resolved at runtime.
+import { serve } from 'https://deno.land/std/http/server.ts';
+import { prelude, jsonResponse, errorResponse } from '../_shared/auth.ts';
+// @ts-expect-error — resolved by import_map.json.
+import { createStarterRoster } from '../_shared/game-core.ts';
 
 export interface CharacterCreateResponse {
-  characters: Array<{
-    id: string;
-    class_id: string;
-    name: string;
-  }>;
+  characters: Array<{ id: string; class_id: string; name: string }>;
 }
 
-// Shape of the intended implementation:
-//
-// serve(async (req) => {
-//   const authHeader = req.headers.get('Authorization');
-//   if (!authHeader) return new Response('Unauthorized', { status: 401 });
-//
-//   const supabase = createClient(
-//     Deno.env.get('SUPABASE_URL')!,
-//     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-//   );
-//   const { data: { user } } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-//   if (!user) return new Response('Unauthorized', { status: 401 });
-//
-//   // Check if roster already exists.
-//   const { data: existing } = await supabase
-//     .from('characters')
-//     .select('id, class_id, name')
-//     .eq('user_id', user.id);
-//   if (existing && existing.length === 7) {
-//     return Response.json({ characters: existing });
-//   }
-//
-//   // Create missing characters using game-core's bootstrap.
-//   const roster = createStarterRoster(user.id);
-//   const { data: inserted, error } = await supabase
-//     .from('characters')
-//     .upsert(roster, { onConflict: 'user_id,class_id' })
-//     .select('id, class_id, name');
-//   if (error) return Response.json({ error: error.message }, { status: 500 });
-//
-//   return Response.json({ characters: inserted } satisfies CharacterCreateResponse);
-// });
+serve(async (req: Request) => {
+  const pre = await prelude(req, 'character.create');
+  if (!pre.ok) return pre.res;
+  const { user, supabase } = pre.ctx;
+
+  // Already-bootstrapped → idempotent return.
+  const { data: existing, error: existingErr } = await supabase
+    .from('characters')
+    .select('id, class_id, name')
+    .eq('user_id', user.id);
+  if (existingErr) return errorResponse('db_read_failed', 500);
+  if (existing && existing.length === 7) {
+    return jsonResponse({ characters: existing } satisfies CharacterCreateResponse);
+  }
+
+  // First-time signup → ensure user_profile exists, then upsert the roster.
+  const { error: profileErr } = await supabase
+    .from('user_profiles')
+    .upsert({ id: user.id, display_name: user.email ?? `player-${user.id.slice(0, 8)}` }, { onConflict: 'id' });
+  if (profileErr) return errorResponse('profile_create_failed', 500);
+
+  const roster = createStarterRoster(user.id);
+  const { data: inserted, error } = await supabase
+    .from('characters')
+    .upsert(roster, { onConflict: 'user_id,class_id' })
+    .select('id, class_id, name');
+  if (error) return errorResponse(`db_write_failed:${error.message}`, 500);
+
+  return jsonResponse({ characters: inserted } satisfies CharacterCreateResponse);
+});

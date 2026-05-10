@@ -40,6 +40,7 @@ export * as Bars from './bars';
 export * as Events from './events';
 export * as Geo from './geo';
 export * as Social from './social';
+export * as Security from './security';
 export {
   createLevel1Character,
   createStarterRoster,
