@@ -96,7 +96,7 @@ function buildSummary(demo: DemoBattle, result: 'win' | 'loss', barTheme: BarThe
 }
 
 export default function BattleScreen() {
-  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string; tier?: string; secondary?: string }>();
+  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string; tier?: string; secondary?: string; vip?: string }>();
   const barTheme: BarThemeId = isBarTheme(params.theme) ? params.theme : 'dive';
   const barLabel = (params.label ?? '').trim() || 'A nameless bar';
 
@@ -129,6 +129,7 @@ export default function BattleScreen() {
   const earnMark = useGameStore((s) => s.earnMark);
   const recordBarClear = useGameStore((s) => s.recordBarClear);
   const saveLastBattle = useGameStore((s) => s.saveLastBattle);
+  const earnVipKey = useGameStore((s) => s.earnVipKey);
   const applyBattleToQuests = useGameStore((s) => s.applyBattleToQuests);
   const activeChar = useGameStore((s) => s.active());
 
@@ -384,8 +385,9 @@ export default function BattleScreen() {
         const firstConquerMult = meta.firstEverClear ? 2 : 1;
         // Bar tier scales loot ilvl AND awards bonus XP at high tiers.
         const tierMult = 1 + (tier - 1) * 0.25; // T1=1.0, T6=2.25
-        const xpAward = Math.floor(100 * dailyMult * firstConquerMult * tierMult);
-        const goldAward = Math.floor(50 * dailyMult * tierMult);
+        const vipMult = params.vip === '1' ? 2 : 1;
+        const xpAward = Math.floor(100 * dailyMult * firstConquerMult * tierMult * vipMult);
+        const goldAward = Math.floor(50 * dailyMult * tierMult * vipMult);
 
         const xpResult = awardXp(activeClassId, xpAward);
         // Reserves get half-XP for participating.
@@ -413,6 +415,13 @@ export default function BattleScreen() {
         if (tier >= 3) {
           const dmgType = Gating.BAR_THEME_DAMAGE[barTheme];
           earnMark(`mark_${dmgType}`);
+          // VIP key drop: ~30% chance, for a different bar theme.
+          if (Math.random() < 0.3) {
+            const allThemes = ['dive', 'pub', 'sports', 'cocktail', 'wine', 'brewery', 'nightclub'] as const;
+            const others = allThemes.filter((t) => t !== barTheme);
+            const drop = others[Math.floor(Math.random() * others.length)];
+            if (drop) earnVipKey(drop);
+          }
         }
         if (params.barId) {
           claimBar({ barId: params.barId, theme: barTheme, label: barLabel });
@@ -423,7 +432,7 @@ export default function BattleScreen() {
       playSfx('defeat');
     }
     return undefined;
-  }, [result, demo, demo.classId, activeClassId, awardXp, addGold, addItem, bumpMastery, earnMark, recordBarClear, saveLastBattle, claimBar, applyBattleToQuests, params.barId, params.tier, barTheme, barLabel]);
+  }, [result, demo, demo.classId, activeClassId, awardXp, addGold, addItem, bumpMastery, earnMark, earnVipKey, recordBarClear, saveLastBattle, claimBar, applyBattleToQuests, params.barId, params.tier, params.vip, barTheme, barLabel]);
 
   // Time-since-hit drives the screen vignette overlay.
   const playerFlashActive = Date.now() - playerHitAt < 280;

@@ -40,7 +40,7 @@ function isItemSlot(s: string | undefined): s is Loot.ItemSlot {
 }
 
 export default function InventoryScreen() {
-  const { inventory, gold, roster, activeIdx, equipped, equipItem, sellItem, marks } = useGameStore();
+  const { inventory, gold, roster, activeIdx, equipped, equipItem, sellItem, marks, vipKeys } = useGameStore();
   const activeChar = roster[activeIdx]!;
   const activeCls = getClass(activeChar.class_id);
   const charEquipped = equipped[activeChar.class_id] ?? {};
@@ -92,6 +92,24 @@ export default function InventoryScreen() {
           {activeCls.name}
         </PixelText>
       </Panel>
+
+      {Object.keys(vipKeys).length > 0 ? (
+        <Panel style={{ marginHorizontal: 12, marginBottom: 8, borderColor: '#a855f7', borderWidth: 2 }}>
+          <PixelText size={10} color={'#a855f7'}>VIP KEYS</PixelText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+            {Object.entries(vipKeys).map(([theme, count]) => (
+              <View key={theme} style={{
+                paddingHorizontal: 6, paddingVertical: 4,
+                borderColor: '#a855f7', borderWidth: 1,
+                backgroundColor: UI.bg,
+              }}>
+                <PixelText size={9} color={'#e0a8f8'}>{theme.toUpperCase()}</PixelText>
+                <PixelText size={8} color={UI.text}>×{count}</PixelText>
+              </View>
+            ))}
+          </View>
+        </Panel>
+      ) : null}
 
       {marks.length > 0 ? (
         <Panel style={{ marginHorizontal: 12, marginBottom: 8 }}>

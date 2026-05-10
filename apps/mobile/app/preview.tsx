@@ -2,10 +2,10 @@
 // the back, and your active character. ENTER routes through the dungeon
 // crawl (or directly to /battle if dungeon is skipped).
 
-import React from 'react';
-import { Pressable, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { getClass, Gating } from '@barbrawl/game-core';
+import { getClass, Gating, type ClassId } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
 import { PixelGrid } from '@/components/PixelGrid';
@@ -40,23 +40,31 @@ export default function PreviewScreen() {
   const label = params.label?.trim() || 'A nameless bar';
   const tier = Math.max(1, Math.min(6, parseInt(params.tier ?? '1', 10) || 1));
 
-  const { active, marks } = useGameStore();
+  const { active, marks, roster, vipKeys, consumeVipKey } = useGameStore();
   const charRow = active();
   const cls = getClass(charRow.class_id);
   const accent = CLASS_ACCENT[charRow.class_id as keyof typeof CLASS_ACCENT];
   const hp = cls.baseStats.hp + (charRow.level - 1) * 6;
+  const [secondary, setSecondary] = useState<ClassId | null>(null);
 
   // Metroidvania gate: tier 4+ requires matching damage-type Resistance Mark.
   const dmgType = Gating.BAR_THEME_DAMAGE[theme];
   const requiredMark = `mark_${dmgType}`;
   const hasMark = marks.includes(requiredMark);
   const locked = tier >= Gating.GATING_BEGINS_AT_TIER && !hasMark;
+  const haveVipKey = (vipKeys[theme] ?? 0) > 0;
 
-  const enterCombat = () => {
+  const enterCombat = (useVip: boolean = false) => {
     if (locked) return;
+    if (useVip && haveVipKey) consumeVipKey(theme);
     router.push({
       pathname: '/dungeon',
-      params: { barId: params.barId ?? '', theme, label, tier: String(tier) },
+      params: {
+        barId: params.barId ?? '',
+        theme, label, tier: String(tier),
+        ...(secondary ? { secondary } : {}),
+        ...(useVip ? { vip: '1' } : {}),
+      },
     });
   };
 
@@ -95,7 +103,7 @@ export default function PreviewScreen() {
         </View>
       </View>
 
-      <Panel style={{ marginHorizontal: 12, marginBottom: 12 }}>
+      <Panel style={{ marginHorizontal: 12, marginBottom: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={{
             width: 40, height: 40,
@@ -115,6 +123,56 @@ export default function PreviewScreen() {
         </View>
       </Panel>
 
+      {/* Backup picker — pick one other character to bring on the bench. */}
+      <Panel style={{ marginHorizontal: 12, marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <PixelText size={11} color={UI.textDim}>BRING A BACKUP?</PixelText>
+          {secondary ? (
+            <Pressable onPress={() => setSecondary(null)}>
+              <PixelText size={10} color={UI.hpHalf}>CLEAR</PixelText>
+            </Pressable>
+          ) : null}
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: 6, paddingTop: 6 }}
+          style={{ flexGrow: 0 }}
+        >
+          {roster
+            .filter((r) => r.class_id !== charRow.class_id)
+            .map((r) => {
+              const c = getClass(r.class_id);
+              const a = CLASS_ACCENT[r.class_id as keyof typeof CLASS_ACCENT];
+              const isPicked = secondary === r.class_id;
+              return (
+                <Pressable
+                  key={r.class_id}
+                  onPress={() => setSecondary(isPicked ? null : (r.class_id as ClassId))}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 6,
+                    paddingHorizontal: 8, paddingVertical: 4,
+                    borderColor: isPicked ? UI.cursor : UI.borderDark,
+                    borderWidth: PIXEL,
+                    backgroundColor: isPicked ? UI.panelFill : UI.bg,
+                  }}
+                >
+                  <View style={{
+                    width: 18, height: 18,
+                    backgroundColor: a,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <PixelText size={11} color={UI.bg}>{c.icon}</PixelText>
+                  </View>
+                  <PixelText size={9} color={isPicked ? UI.cursor : UI.text}>
+                    {c.name.replace(/^The\s+/, '').toUpperCase()} L{r.level}
+                  </PixelText>
+                </Pressable>
+              );
+            })}
+        </ScrollView>
+      </Panel>
+
       {locked ? (
         <Panel style={{ marginHorizontal: 12, marginBottom: 8, borderColor: UI.hpLow, borderWidth: PIXEL }}>
           <PixelText size={11} color={UI.hpLow}>LOCKED — TIER {tier}+</PixelText>
@@ -128,9 +186,9 @@ export default function PreviewScreen() {
         </Panel>
       ) : null}
 
-      <View style={{ paddingHorizontal: 12 }}>
+      <View style={{ paddingHorizontal: 12, gap: 8 }}>
         <Pressable
-          onPress={enterCombat}
+          onPress={() => enterCombat(false)}
           disabled={locked}
           style={{
             alignItems: 'center', paddingVertical: 14,
@@ -143,6 +201,20 @@ export default function PreviewScreen() {
             {locked ? '🔒 LOCKED' : '▶ FIGHT YOUR WAY IN'}
           </PixelText>
         </Pressable>
+        {haveVipKey && !locked ? (
+          <Pressable
+            onPress={() => enterCombat(true)}
+            style={{
+              alignItems: 'center', paddingVertical: 12,
+              borderColor: '#a855f7', borderWidth: PIXEL,
+              backgroundColor: '#1a0a28',
+            }}
+          >
+            <PixelText size={13} color={'#e0a8f8'}>
+              ★ USE VIP KEY ({vipKeys[theme]}) — 2× REWARDS
+            </PixelText>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );

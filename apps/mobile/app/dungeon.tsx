@@ -28,7 +28,7 @@ function isBarTheme(s: string | undefined): s is BarThemeId {
 }
 
 export default function DungeonScreen() {
-  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string; tier?: string; secondary?: string }>();
+  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string; tier?: string; secondary?: string; vip?: string }>();
   const theme: BarThemeId = isBarTheme(params.theme) ? params.theme : 'dive';
   const label = params.label?.trim() || 'A nameless bar';
 
@@ -64,9 +64,10 @@ export default function DungeonScreen() {
         theme, label,
         tier: params.tier ?? '1',
         ...(params.secondary ? { secondary: params.secondary } : {}),
+        ...(params.vip ? { vip: params.vip } : {}),
       },
     });
-  }, [params.barId, params.tier, params.secondary, theme, label]);
+  }, [params.barId, params.tier, params.secondary, params.vip, theme, label]);
 
   const isDefeated = useCallback((c: number, r: number) =>
     defeatedPatrols.has(`${roomIdx}:${c}:${r}`),

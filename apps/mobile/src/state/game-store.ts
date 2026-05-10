@@ -72,6 +72,8 @@ export interface GameState {
   crawlPassXp: number;
   /** Resistance Mark IDs the player owns. Tier 4+ entries require matching mark. */
   marks: readonly string[];
+  /** VIP key IDs by bar theme. Consumed on use for 2× reward runs. */
+  vipKeys: Record<string, number>;
   /** Per-bar lifetime + daily clear counts.
    *  total = ever; today = { dateKey, count } resetting at local midnight. */
   barClears: Record<string, { total: number; today: { dateKey: string; count: number } }>;
@@ -107,6 +109,10 @@ export interface GameState {
   bumpMastery: (classId: ClassId, barType: string) => void;
   /** Add a Resistance Mark id. Returns true if newly added, false if already owned. */
   earnMark: (markId: string) => boolean;
+  /** Add a VIP key for a bar theme. Returns the new total count. */
+  earnVipKey: (theme: string) => number;
+  /** Consume a VIP key for a theme. Returns true if one was consumed. */
+  consumeVipKey: (theme: string) => boolean;
   /** Remove an item from inventory and award scaled gold (ilvl × rarity). */
   sellItem: (itemId: string) => number;
   /**
@@ -180,6 +186,7 @@ export const useGameStore = create<GameState>()(
       dailyQuests: null,
       crawlPassXp: 0,
       marks: [],
+      vipKeys: {},
       barClears: {},
       lastBattle: null,
       nominations: [],
@@ -262,6 +269,26 @@ export const useGameStore = create<GameState>()(
         const s = get();
         if (s.marks.includes(markId)) return false;
         set((st) => ({ marks: [...st.marks, markId] }));
+        return true;
+      },
+
+      earnVipKey: (theme) => {
+        const s = get();
+        const next = (s.vipKeys[theme] ?? 0) + 1;
+        set((st) => ({ vipKeys: { ...st.vipKeys, [theme]: next } }));
+        return next;
+      },
+
+      consumeVipKey: (theme) => {
+        const s = get();
+        const have = s.vipKeys[theme] ?? 0;
+        if (have <= 0) return false;
+        set((st) => {
+          const next = { ...st.vipKeys };
+          if (have <= 1) delete next[theme];
+          else next[theme] = have - 1;
+          return { vipKeys: next };
+        });
         return true;
       },
 
@@ -543,7 +570,7 @@ export const useGameStore = create<GameState>()(
           gold: 250, respecTokens: 5, inventory: [], roster: freshRoster(), activeIdx: 1,
           equipped: {}, claimedBars: [], audioMuted: false,
           loginStreak: freshStreak(), pendingLoginRewards: [], dailyQuests: null,
-          crawlPassXp: 0, marks: [], barClears: {}, lastBattle: null,
+          crawlPassXp: 0, marks: [], vipKeys: {}, barClears: {}, lastBattle: null,
           nominations: [],
         });
       },
@@ -567,6 +594,7 @@ export const useGameStore = create<GameState>()(
         dailyQuests: s.dailyQuests,
         crawlPassXp: s.crawlPassXp,
         marks: s.marks,
+        vipKeys: s.vipKeys,
         barClears: s.barClears,
         lastBattle: s.lastBattle,
         nominations: s.nominations,
