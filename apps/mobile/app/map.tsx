@@ -10,6 +10,7 @@ import { PlayerSprite, type Direction } from '@/components/PlayerSprite';
 import { DPad } from '@/components/DPad';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
+import { ClaimMarker } from '@/components/ClaimMarker';
 import { UI } from '@/design/palette';
 import { PIXEL } from '@/design/scale';
 import {
@@ -33,18 +34,69 @@ function asDoor(t: ReturnType<typeof tileAt>) {
   return def.kind === 'door' ? { ...def, tileId: t } : null;
 }
 
-/** Renders a 9×7 tile window of the map centered on the player. */
+/** Find the (col, row) of the door tile leading to a given barId. */
+function findDoorOf(barId: string): { col: number; row: number } | null {
+  for (let r = 0; r < MAP_ROWS; r++) {
+    for (let c = 0; c < MAP_COLS; c++) {
+      const t = tileAt(OVERWORLD_MAP, c, r);
+      if (!t) continue;
+      const def = TILES[t];
+      if (def.kind === 'door' && def.barId === barId) {
+        return { col: c, row: r };
+      }
+    }
+  }
+  return null;
+}
+
+/** Renders a 9×7 tile window of the map centered on the player.
+ *  Camera tweens smoothly over CAM_TWEEN_MS instead of snapping. */
+const CAM_TWEEN_MS = 140;
 function CameraViewport({
-  col, row, dir, step,
-}: { col: number; row: number; dir: Direction; step: number }) {
-  // Camera origin = top-left tile of viewport. Clamp so we don't show
-  // off-map space.
-  const camCol = Math.max(0, Math.min(MAP_COLS - VIEWPORT_COLS, col - Math.floor(VIEWPORT_COLS / 2)));
-  const camRow = Math.max(0, Math.min(MAP_ROWS - VIEWPORT_ROWS, row - Math.floor(VIEWPORT_ROWS / 2)));
+  col, row, dir, step, claimedBarIds,
+}: { col: number; row: number; dir: Direction; step: number; claimedBarIds: readonly string[] }) {
+  // Target camera (top-left tile of the viewport in tile units, fractional
+  // during transition). Clamped to map.
+  const targetCol = Math.max(0, Math.min(MAP_COLS - VIEWPORT_COLS, col - Math.floor(VIEWPORT_COLS / 2)));
+  const targetRow = Math.max(0, Math.min(MAP_ROWS - VIEWPORT_ROWS, row - Math.floor(VIEWPORT_ROWS / 2)));
+
+  const [camCol, setCamCol] = React.useState(targetCol);
+  const [camRow, setCamRow] = React.useState(targetRow);
+  const startRef = React.useRef<{ from: { c: number; r: number }; to: { c: number; r: number }; t0: number } | null>(null);
+  const rafRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    if (camCol === targetCol && camRow === targetRow) return;
+    startRef.current = {
+      from: { c: camCol, r: camRow },
+      to: { c: targetCol, r: targetRow },
+      t0: performance.now(),
+    };
+    const tick = (now: number) => {
+      const start = startRef.current;
+      if (!start) return;
+      const t = Math.min(1, (now - start.t0) / CAM_TWEEN_MS);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const cc = start.from.c + (start.to.c - start.from.c) * eased;
+      const cr = start.from.r + (start.to.r - start.from.r) * eased;
+      setCamCol(cc);
+      setCamRow(cr);
+      if (t < 1) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else {
+        startRef.current = null;
+      }
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetCol, targetRow]);
 
   const viewportW = VIEWPORT_COLS * VIEWPORT_TILE;
   const viewportH = VIEWPORT_ROWS * VIEWPORT_TILE;
-  const tilemapScale = VIEWPORT_TILE / TILE_LOGICAL; // shrinks tilemap to viewport tile size
+  const tilemapScale = VIEWPORT_TILE / TILE_LOGICAL;
 
   return (
     <View style={{
@@ -55,7 +107,6 @@ function CameraViewport({
       overflow: 'hidden',
       position: 'relative',
     }}>
-      {/* Tilemap shifted by camera origin */}
       <View style={{
         position: 'absolute',
         left: -camCol * VIEWPORT_TILE,
@@ -65,7 +116,19 @@ function CameraViewport({
       }}>
         <Tilemap />
       </View>
-      {/* Player rendered relative to camera origin */}
+      {/* Pulsing rings over claimed bar doors */}
+      {claimedBarIds.map((barId) => {
+        const door = findDoorOf(barId);
+        if (!door) return null;
+        return (
+          <ClaimMarker
+            key={barId}
+            size={VIEWPORT_TILE}
+            left={(door.col - camCol) * VIEWPORT_TILE}
+            top={(door.row - camRow) * VIEWPORT_TILE}
+          />
+        );
+      })}
       <View style={{
         position: 'absolute',
         left: (col - camCol) * VIEWPORT_TILE,
@@ -163,7 +226,10 @@ export default function MapScreen() {
 
       {/* Map viewport — camera follows player, edge-clamped */}
       <View style={{ alignItems: 'center', paddingVertical: 8 }}>
-        <CameraViewport col={col} row={row} dir={dir} step={step} />
+        <CameraViewport
+          col={col} row={row} dir={dir} step={step}
+          claimedBarIds={Object.keys(claimedById)}
+        />
       </View>
 
       {/* Door prompt */}

@@ -9,7 +9,7 @@
 // FIGHT and SKILL both stage a `pendingAction` (without rhythm), then the
 // rhythm bar fills in the rhythm quality. Real engine call follows.
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Combat, Loot, type RhythmResult, type RhythmQuality } from '@barbrawl/game-core';
@@ -94,6 +94,11 @@ export default function BattleScreen() {
 
   const recentLog = useMemo(() => demo.state.log.slice(-3), [demo.state.log]);
   const result = demo.state.result;
+  const logScrollRef = useRef<ScrollView>(null);
+  useEffect(() => {
+    // Snap log to bottom whenever a new entry lands.
+    logScrollRef.current?.scrollToEnd({ animated: true });
+  }, [recentLog]);
 
   // ── command-level actions ─────────────────────────────────────
   const onCommand = useCallback((id: string) => {
@@ -283,7 +288,7 @@ export default function BattleScreen() {
 
       {/* ── battle log ───────────────────────────────────────── */}
       <Panel style={{ marginHorizontal: 12, height: BATTLE_LAYOUT.logHeight }}>
-        <ScrollView contentContainerStyle={{ paddingVertical: 2 }}>
+        <ScrollView ref={logScrollRef} contentContainerStyle={{ paddingVertical: 2 }}>
           {recentLog.length === 0 ? (
             <PixelText size={12} color={UI.textDim}>The fight begins.</PixelText>
           ) : (
