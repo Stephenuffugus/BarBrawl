@@ -21,6 +21,7 @@ import { MenuList, type MenuItem } from '@/components/MenuList';
 import { RhythmBar } from '@/components/RhythmBar';
 import { SkillPanel } from '@/components/SkillPanel';
 import { ShakeFlash } from '@/components/ShakeFlash';
+import { VictoryFlash } from '@/components/VictoryFlash';
 import { SPRITES, type SpriteId } from '@/design/sprites';
 import { UI, CLASS_ACCENT, BAR_PALETTES, type BarThemeId } from '@/design/palette';
 import { PIXEL, BATTLE_LAYOUT } from '@/design/scale';
@@ -172,12 +173,10 @@ export default function BattleScreen() {
     }
   }, [result]);
 
-  // Auto-route to rewards on victory after a brief celebration pause.
+  // Reward minting on victory (XP + gold + loot drop).
   useEffect(() => {
     if (result === 'win') {
       const t = setTimeout(() => {
-        // Award baseline XP and a loot drop. Real game uses edge function;
-        // demo uses inline rng for the drop and store-managed XP.
         awardXp(demo.classId, 100);
         addGold(50);
         const item = Loot.rollItem({
@@ -210,6 +209,9 @@ export default function BattleScreen() {
           }}
         />
       ) : null}
+
+      {/* Victory celebration overlay */}
+      <VictoryFlash active={result === 'win'} />
       {/* ── enemy area ─────────────────────────────────────── */}
       <View style={{
         height: BATTLE_LAYOUT.enemyAreaHeight,

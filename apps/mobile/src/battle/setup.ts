@@ -1,9 +1,12 @@
 // Demo battle bootstrapper. Builds a battle from the active character in
 // the game store + an enemy lineup themed by bar type. Active character's
-// class drives skills equipped + sprite accent.
+// class drives skills equipped + sprite accent. Equipped items + allocated
+// skill nodes are folded into the player Combatant so equipment + tree
+// passives actually affect fight outcomes.
 
 import { Combat, getClass, toRuntime, type ClassId } from '@barbrawl/game-core';
 import { useGameStore } from '@/state/game-store';
+import { computeEffectiveStats } from '@/state/effective-stats';
 import type { BarThemeId } from '@/design/palette';
 
 /** Two normal enemies + one boss per bar theme. */
@@ -70,11 +73,18 @@ export interface BuildBattleOptions {
 export function buildDemoBattle(opts: BuildBattleOptions = {}): DemoBattle {
   const theme: BarThemeId = opts.theme ?? 'dive';
   const lineup = ENEMY_LINEUPS[theme];
-  const active = useGameStore.getState().active();
+  const store = useGameStore.getState();
+  const active = store.active();
   const equipped = defaultActivesFor(active.class_id);
-  const runtime = toRuntime({
-    ...active,
-    level: Math.max(active.level, 5),
+  const charEquipped = store.equipped[active.class_id] ?? {};
+  const level = Math.max(active.level, 5);
+
+  // Stats: base + per-level scaling + equipped flat/pct affixes folded in
+  // via computeEffectiveStats. toRuntime gives us the resource shape; we
+  // override its stats with the equipment-aware version.
+  const eff = computeEffectiveStats(active.class_id as ClassId, level, charEquipped, store.inventory);
+  const runtime = toRuntime({ ...active, level }, {
+    stats: { ...eff, maxHp: eff.hp },
   });
 
   const enemyTemplates: Combat.EnemyTemplate[] = [
@@ -89,11 +99,14 @@ export function buildDemoBattle(opts: BuildBattleOptions = {}): DemoBattle {
     enemyTemplates,
   });
 
-  // Patch player with skillsEquipped so SkillPanel knows the loadout.
+  // Patch player with skillsEquipped + allocated_nodes so the SkillPanel
+  // knows the loadout and the passive resolver folds in tree passives.
   state = {
     ...state,
     combatants: state.combatants.map((c) =>
-      c.kind === 'player' ? { ...c, skillsEquipped: [...equipped] } : c,
+      c.kind === 'player'
+        ? { ...c, skillsEquipped: [...equipped], allocatedNodes: [...active.allocated_nodes] }
+        : c,
     ),
   };
 

@@ -72,13 +72,13 @@ export const useGameStore = create<GameState>()(
 
       allocateNode: (classId, nodeId) => {
         set((s) => ({
-          roster: s.roster.map((r) =>
-            r.class_id !== classId
-              ? r
-              : r.allocated_nodes.includes(nodeId)
-                ? r
-                : { ...r, allocated_nodes: [...r.allocated_nodes, nodeId] },
-          ),
+          roster: s.roster.map((r) => {
+            if (r.class_id !== classId) return r;
+            if (r.allocated_nodes.includes(nodeId)) return r;
+            // Skill point cap: 1 SP per level. Refuse beyond level.
+            if (r.allocated_nodes.length >= r.level) return r;
+            return { ...r, allocated_nodes: [...r.allocated_nodes, nodeId] };
+          }),
         }));
       },
 
