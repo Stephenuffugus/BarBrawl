@@ -65,7 +65,7 @@ export default function MapScreen() {
   const enterDoor = useCallback(() => {
     if (!adjacentDoor) return;
     router.push({
-      pathname: '/battle',
+      pathname: '/preview',
       params: {
         barId: adjacentDoor.barId ?? '',
         theme: adjacentDoor.theme ?? 'dive',
