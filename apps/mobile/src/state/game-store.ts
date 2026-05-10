@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import {
-  applyXp, createStarterRoster, Events, Progression,
+  applyXp, createStarterRoster, Bars, Events, Progression,
   type NewCharacterRow, type ClassId,
 } from '@barbrawl/game-core';
 import type { Loot } from '@barbrawl/game-core';
@@ -84,6 +84,17 @@ export interface GameState {
     log: { turn: number; actorId: string; kind: string; text: string }[];
     finishedAtMs: number;
   } | null;
+  /** Bars the player has nominated. Demo-only — real flow goes to Supabase. */
+  nominations: {
+    id: string;
+    barName: string;
+    address: string;
+    barType: string;
+    lat: number;
+    lng: number;
+    status: 'pending' | 'approved' | 'rejected';
+    submittedAtMs: number;
+  }[];
 
   // selectors
   active: () => CharacterRow;
@@ -105,6 +116,9 @@ export interface GameState {
    */
   recordBarClear: (barId: string) => { clearNumberToday: number; firstEverClear: boolean };
   saveLastBattle: (snapshot: NonNullable<GameState['lastBattle']>) => void;
+  submitNomination: (input: {
+    barName: string; address: string; barType: string; lat: number; lng: number;
+  }) => { ok: true } | { ok: false; reason: string };
   /** Reset all allocations on a character. Cost: level² gold or 1 token. */
   respecCharacter: (classId: ClassId, useToken: boolean) =>
     | { ok: true; goldSpent: number; tokensSpent: number }
@@ -168,6 +182,7 @@ export const useGameStore = create<GameState>()(
       marks: [],
       barClears: {},
       lastBattle: null,
+      nominations: [],
 
       active: () => get().roster[get().activeIdx]!,
       defenderForBar: (barId) => get().claimedBars.find((b) => b.barId === barId),
@@ -294,6 +309,42 @@ export const useGameStore = create<GameState>()(
 
       saveLastBattle: (snapshot) => {
         set({ lastBattle: snapshot });
+      },
+
+      submitNomination: (input) => {
+        const s = get();
+        // Check against already-claimed bars + prior nominations as known places.
+        const known = [
+          ...s.claimedBars.map((b) => ({
+            id: b.barId, name: b.label,
+            location: { lat: 0, lng: 0 }, // unknown — won't dedup against synthetic seeds
+            source: 'bar' as const,
+          })),
+          ...s.nominations.map((n) => ({
+            id: n.id, name: n.barName,
+            location: { lat: n.lat, lng: n.lng },
+            source: 'nomination' as const,
+          })),
+        ];
+        const result = Bars.validateNomination(
+          { ...input, location: { lat: input.lat, lng: input.lng } },
+          known,
+        );
+        if (!result.ok) {
+          return { ok: false, reason: result.reason };
+        }
+        const nom = {
+          id: `nom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          barName: result.normalized.barName,
+          address: result.normalized.address,
+          barType: result.normalized.barType,
+          lat: input.lat,
+          lng: input.lng,
+          status: 'pending' as const,
+          submittedAtMs: Date.now(),
+        };
+        set((st) => ({ nominations: [...st.nominations, nom] }));
+        return { ok: true };
       },
 
       addItem: (item) => {
@@ -493,6 +544,7 @@ export const useGameStore = create<GameState>()(
           equipped: {}, claimedBars: [], audioMuted: false,
           loginStreak: freshStreak(), pendingLoginRewards: [], dailyQuests: null,
           crawlPassXp: 0, marks: [], barClears: {}, lastBattle: null,
+          nominations: [],
         });
       },
     }),
@@ -517,6 +569,7 @@ export const useGameStore = create<GameState>()(
         marks: s.marks,
         barClears: s.barClears,
         lastBattle: s.lastBattle,
+        nominations: s.nominations,
       }),
     },
   ),
