@@ -12,7 +12,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Combat, Loot, Gating, Progression, type RhythmResult, type RhythmQuality } from '@barbrawl/game-core';
+import { Combat, Loot, Gating, Progression, getClass, type ClassId, type RhythmResult, type RhythmQuality } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
 import { PixelGrid } from '@/components/PixelGrid';
@@ -25,15 +25,17 @@ import { VictoryFlash } from '@/components/VictoryFlash';
 import { ResourceBar } from '@/components/ResourceBar';
 import { StatusRow } from '@/components/StatusRow';
 import { ConsumablePanel } from '@/components/ConsumablePanel';
+import { SwapPanel } from '@/components/SwapPanel';
 import { LevelUpFlash } from '@/components/LevelUpFlash';
 import { playSfx } from '@/audio/sfx';
 import { SPRITES, type SpriteId } from '@/design/sprites';
 import { UI, CLASS_ACCENT, BAR_PALETTES, type BarThemeId } from '@/design/palette';
 import { PIXEL, BATTLE_LAYOUT } from '@/design/scale';
-import { buildDemoBattle, type DemoBattle } from '@/battle/setup';
+import { buildDemoBattle, buildSwapCombatant, type DemoBattle, type ReserveChar } from '@/battle/setup';
 import { useGameStore } from '@/state/game-store';
 
-const COMMAND_ITEMS: readonly MenuItem[] = [
+/** Static command set; SWAP is appended dynamically when reserves exist. */
+const BASE_COMMAND_ITEMS: readonly MenuItem[] = [
   { id: 'fight', label: 'FIGHT' },
   { id: 'skill', label: 'SKILL' },
   { id: 'item',  label: 'ITEM' },
@@ -44,7 +46,7 @@ function isBarTheme(s: string | undefined): s is BarThemeId {
   return !!s && s in BAR_PALETTES;
 }
 
-type Phase = 'idle' | 'choosing-skill' | 'choosing-item' | 'awaiting-rhythm' | 'resolving';
+type Phase = 'idle' | 'choosing-skill' | 'choosing-item' | 'awaiting-rhythm' | 'resolving' | 'swapping';
 
 interface PendingAction {
   kind: 'basic_attack' | 'skill';
@@ -94,11 +96,15 @@ function buildSummary(demo: DemoBattle, result: 'win' | 'loss', barTheme: BarThe
 }
 
 export default function BattleScreen() {
-  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string; tier?: string }>();
+  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string; tier?: string; secondary?: string }>();
   const barTheme: BarThemeId = isBarTheme(params.theme) ? params.theme : 'dive';
   const barLabel = (params.label ?? '').trim() || 'A nameless bar';
 
-  const [demo, setDemo] = useState<DemoBattle>(() => buildDemoBattle({ theme: barTheme, ...(params.barId ? { barId: params.barId } : {}) }));
+  const [demo, setDemo] = useState<DemoBattle>(() => buildDemoBattle({
+    theme: barTheme,
+    ...(params.barId ? { barId: params.barId } : {}),
+    ...(params.secondary ? { secondaryClassId: params.secondary as ClassId } : {}),
+  }));
   const [phase, setPhase] = useState<Phase>('idle');
   const [cursor, setCursor] = useState(0);
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -127,6 +133,20 @@ export default function BattleScreen() {
   const activeChar = useGameStore((s) => s.active());
 
   const player = demo.state.combatants.find((c) => c.kind === 'player')!;
+  // Reserves with a residual HP > 0 can be swapped in.
+  const swappableReserves = demo.reserves.filter((r) => r.startingHp > 0);
+  // Active player's mutable class for awarding shared XP / mastery later.
+  const [activeClassId, setActiveClassId] = useState<ClassId>(demo.classId);
+  const COMMAND_ITEMS = useMemo<readonly MenuItem[]>(() => {
+    if (swappableReserves.length === 0) return BASE_COMMAND_ITEMS;
+    // Insert SWAP right after SKILL.
+    return [
+      BASE_COMMAND_ITEMS[0]!,
+      BASE_COMMAND_ITEMS[1]!,
+      { id: 'swap', label: 'SWAP' },
+      ...BASE_COMMAND_ITEMS.slice(2),
+    ];
+  }, [swappableReserves.length]);
   const aliveEnemy = demo.state.combatants.find(
     (c) => (c.kind === 'enemy' || c.kind === 'boss') && c.stats.hp > 0,
   );
@@ -156,10 +176,78 @@ export default function BattleScreen() {
       setPhase('choosing-skill');
     } else if (id === 'item') {
       setPhase('choosing-item');
+    } else if (id === 'swap') {
+      setPhase('swapping');
     } else if (id === 'run') {
       router.back();
     }
   }, [phase, result, aliveEnemy]);
+
+  /** Execute the swap: replace player Combatant in state with a reserve, the
+   *  current player goes to the bench at residual HP. Costs the turn —
+   *  enemy gets a free swing while we transition. */
+  const onSwap = useCallback((newClassId: ClassId) => {
+    setPhase('resolving');
+    const reserve = demo.reserves.find((r) => r.classId === newClassId);
+    if (!reserve) { setPhase('idle'); return; }
+
+    const before = demo.state;
+    const oldPlayerIdx = before.combatants.findIndex((c) => c.kind === 'player');
+    if (oldPlayerIdx < 0) { setPhase('idle'); return; }
+    const oldPlayer = before.combatants[oldPlayerIdx]!;
+
+    // Build the new player Combatant from the reserve at its previously
+    // recorded HP (if it was swapped out before).
+    const swap = buildSwapCombatant(newClassId, reserve.startingHp);
+    const newPlayer = { ...swap.combatant, kind: 'player' as const };
+
+    // Replace combatants; build new reserves array with the outgoing player.
+    const newCombatants = [...before.combatants];
+    newCombatants[oldPlayerIdx] = newPlayer;
+
+    const newReserves: ReserveChar[] = demo.reserves
+      .filter((r) => r.classId !== newClassId)
+      .concat({
+        classId: oldPlayer.classId as ClassId,
+        level: oldPlayer.level ?? 5,
+        allocatedNodes: oldPlayer.allocatedNodes ?? [],
+        equippedSkills: oldPlayer.skillsEquipped ?? [],
+        maxHp: oldPlayer.stats.maxHp,
+        startingHp: oldPlayer.stats.hp,
+      });
+
+    let nextState: Combat.BattleState = {
+      ...before,
+      combatants: newCombatants,
+      log: [...before.log, {
+        turn: before.turn,
+        actorId: oldPlayer.id,
+        kind: 'info',
+        text: `${getClass(oldPlayer.classId as ClassId).name} taps out — ${getClass(newClassId).name} steps in.`,
+      }],
+    };
+    // Spend the turn (enemy gets to act).
+    nextState = Combat.advanceTurn(nextState, { rng: makeRng() });
+
+    // Detect player damage from enemy retaliation.
+    const playerBefore = before.combatants.find((c) => c.kind === 'player');
+    const playerAfter = nextState.combatants.find((c) => c.kind === 'player');
+    if (playerBefore && playerAfter) {
+      const dmg = newPlayer.stats.hp - playerAfter.stats.hp;
+      if (dmg > 0) {
+        const heavy = dmg / newPlayer.stats.maxHp >= 0.15;
+        setPlayerHitSeverity(heavy ? 'heavy' : 'light');
+        setPlayerHitAt(Date.now());
+      }
+    }
+
+    setDemo({ ...demo, state: nextState, reserves: newReserves, classId: newClassId, equipped: swap.equipped });
+    setActiveClassId(newClassId);
+    playSfx('menu_select');
+    setTimeout(() => setPhase('idle'), 350);
+  }, [demo]);
+
+  const onCancelSwap = useCallback(() => setPhase('idle'), []);
 
   const onPickSkill = useCallback((nodeId: string) => {
     if (!aliveEnemy) return;
@@ -247,11 +335,15 @@ export default function BattleScreen() {
 
   // ── replay / continue ─────────────────────────────────────────
   const onReplay = useCallback(() => {
-    setDemo(buildDemoBattle({ theme: barTheme, ...(params.barId ? { barId: params.barId } : {}) }));
+    setDemo(buildDemoBattle({
+      theme: barTheme,
+      ...(params.barId ? { barId: params.barId } : {}),
+      ...(params.secondary ? { secondaryClassId: params.secondary as ClassId } : {}),
+    }));
     setPhase('idle');
     setPending(null);
     setCursor(0);
-  }, [barTheme, params.barId]);
+  }, [barTheme, params.barId, params.secondary]);
 
   const onContinue = useCallback(() => {
     if (result === 'win') {
@@ -295,11 +387,14 @@ export default function BattleScreen() {
         const xpAward = Math.floor(100 * dailyMult * firstConquerMult * tierMult);
         const goldAward = Math.floor(50 * dailyMult * tierMult);
 
-        const xpResult = awardXp(demo.classId, xpAward);
+        const xpResult = awardXp(activeClassId, xpAward);
+        // Reserves get half-XP for participating.
+        for (const r of demo.reserves) {
+          awardXp(r.classId, Math.floor(xpAward * 0.5));
+        }
         addGold(goldAward);
         if (xpResult.levelsGained > 0) {
-          // Look up the now-current level via a fresh active() snapshot.
-          const newRow = useGameStore.getState().roster.find((r) => r.class_id === demo.classId);
+          const newRow = useGameStore.getState().roster.find((r) => r.class_id === activeClassId);
           if (newRow) {
             setLevelUpEvent({ levels: xpResult.levelsGained, newLevel: newRow.level });
             playSfx('level_up');
@@ -313,7 +408,8 @@ export default function BattleScreen() {
           itemIdGen: () => `it-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         });
         addItem(item);
-        bumpMastery(demo.classId, barTheme);
+        bumpMastery(activeClassId, barTheme);
+        for (const r of demo.reserves) bumpMastery(r.classId, barTheme);
         if (tier >= 3) {
           const dmgType = Gating.BAR_THEME_DAMAGE[barTheme];
           earnMark(`mark_${dmgType}`);
@@ -327,7 +423,7 @@ export default function BattleScreen() {
       playSfx('defeat');
     }
     return undefined;
-  }, [result, demo, demo.classId, awardXp, addGold, addItem, bumpMastery, earnMark, recordBarClear, saveLastBattle, claimBar, applyBattleToQuests, params.barId, params.tier, barTheme, barLabel]);
+  }, [result, demo, demo.classId, activeClassId, awardXp, addGold, addItem, bumpMastery, earnMark, recordBarClear, saveLastBattle, claimBar, applyBattleToQuests, params.barId, params.tier, barTheme, barLabel]);
 
   // Time-since-hit drives the screen vignette overlay.
   const playerFlashActive = Date.now() - playerHitAt < 280;
@@ -469,6 +565,30 @@ export default function BattleScreen() {
               <StatusRow effects={player.statusEffects} />
             </View>
           ) : null}
+          {/* Bench indicator: show backup at residual HP. */}
+          {swappableReserves.length > 0 ? (
+            <View style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <PixelText size={9} color={UI.textDim}>BENCH</PixelText>
+              {swappableReserves.map((r) => {
+                const c = getClass(r.classId);
+                const accentR = CLASS_ACCENT[r.classId as keyof typeof CLASS_ACCENT];
+                const hpPct = r.startingHp / r.maxHp;
+                return (
+                  <View key={r.classId} style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 4,
+                    paddingHorizontal: 4, paddingVertical: 2,
+                    backgroundColor: UI.bg,
+                    borderColor: accentR, borderWidth: 1,
+                  }}>
+                    <PixelText size={10} color={accentR}>{c.icon}</PixelText>
+                    <PixelText size={8} color={hpPct > 0.5 ? UI.hpFull : hpPct > 0.25 ? UI.hpHalf : UI.hpLow}>
+                      {Math.round(hpPct * 100)}%
+                    </PixelText>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
         </Panel>
 
         {/* The right-side panel cycles between menu / skills / rhythm */}
@@ -486,6 +606,8 @@ export default function BattleScreen() {
               onPick={onPickItem}
               onCancel={onCancelItem}
             />
+          ) : phase === 'swapping' ? (
+            <SwapPanel reserves={swappableReserves} onPick={onSwap} onCancel={onCancelSwap} />
           ) : phase === 'awaiting-rhythm' ? (
             <Panel style={{ minHeight: 132, alignItems: 'center', justifyContent: 'center' }}>
               <RhythmBar

@@ -1,13 +1,24 @@
-// Demo battle bootstrapper. Builds a battle from the active character in
-// the game store + an enemy lineup themed by bar type. Active character's
-// class drives skills equipped + sprite accent. Equipped items + allocated
-// skill nodes are folded into the player Combatant so equipment + tree
-// passives actually affect fight outcomes.
+// Demo battle bootstrapper. Builds a battle from the active character +
+// (optionally) a backup character. Enemy lineup is themed by bar type.
+// Active character's class drives skills equipped + sprite accent.
+// Equipped items + allocated skill nodes are folded into the player
+// Combatant so equipment + tree passives affect fight outcomes.
 
 import { Combat, getClass, toRuntime, type ClassId } from '@barbrawl/game-core';
 import { useGameStore } from '@/state/game-store';
 import { computeEffectiveStats } from '@/state/effective-stats';
 import type { BarThemeId } from '@/design/palette';
+
+/** Reserve character — sat on the bench, available via SWAP. */
+export interface ReserveChar {
+  classId: ClassId;
+  level: number;
+  allocatedNodes: readonly string[];
+  equippedSkills: readonly string[];
+  /** Effective stats at start; HP burns down on swap-in if previously hurt. */
+  maxHp: number;
+  startingHp: number;
+}
 
 /** Two normal enemies + one boss per bar theme. */
 const ENEMY_LINEUPS: Record<BarThemeId, { patron: string; tough: string; boss: string }> = {
@@ -56,10 +67,53 @@ export interface DemoBattle {
   patronId: string;
   bossId: string;
   enemySpriteIds: Record<string, 'drunken_patron' | 'bar_patron' | 'bar_boss'>;
-  /** Equipped skill node IDs for the player. */
+  /** Equipped skill node IDs for the active player. */
   equipped: readonly string[];
-  /** Class ID of the player (for sprite accent + post-battle XP awards). */
+  /** Class ID of the active player (for sprite accent + post-battle XP awards). */
   classId: ClassId;
+  /** Bench: characters available via SWAP. Demo supports 1 backup. */
+  reserves: readonly ReserveChar[];
+}
+
+/** Convert a roster row + theme into a Combat.Combatant ready for the live state. */
+function buildPlayerCombatant(classId: ClassId, level: number, opts?: { hp?: number }) {
+  const store = useGameStore.getState();
+  const row = store.roster.find((r) => r.class_id === classId);
+  if (!row) throw new Error(`No roster row for ${classId}`);
+  const charEquipped = store.equipped[classId] ?? {};
+  const lvl = Math.max(level, 5);
+  const eff = computeEffectiveStats(classId, lvl, charEquipped, store.inventory);
+  const equipped = defaultActivesFor(classId);
+  const runtime = toRuntime({ ...row, level: lvl }, {
+    stats: { ...eff, maxHp: eff.hp },
+  });
+  // Combat.playerCombatant builds the standard Combatant shape. We then
+  // override HP if a residual was passed (for swap-back continuity).
+  const c = Combat.playerCombatant(runtime, `player:${classId}:${Date.now()}`);
+  return {
+    combatant: opts?.hp !== undefined
+      ? { ...c, stats: { ...c.stats, hp: Math.max(0, Math.min(opts.hp, c.stats.maxHp)) } }
+      : c,
+    equipped,
+    runtime,
+    allocatedNodes: row.allocated_nodes,
+  };
+}
+
+export function buildSwapCombatant(classId: ClassId, residualHp?: number) {
+  const store = useGameStore.getState();
+  const row = store.roster.find((r) => r.class_id === classId);
+  if (!row) throw new Error(`No roster row for ${classId}`);
+  const lvl = Math.max(row.level, 5);
+  const built = buildPlayerCombatant(
+    classId,
+    lvl,
+    residualHp !== undefined ? { hp: residualHp } : {},
+  );
+  return {
+    combatant: { ...built.combatant, skillsEquipped: [...built.equipped], allocatedNodes: [...built.allocatedNodes] },
+    equipped: built.equipped,
+  };
 }
 
 export interface BuildBattleOptions {
@@ -67,6 +121,8 @@ export interface BuildBattleOptions {
   theme?: BarThemeId;
   /** Bar id — feeds the seed for deterministic enemy stats per location. */
   barId?: string;
+  /** Optional backup character class. */
+  secondaryClassId?: ClassId | null;
 }
 
 /** Build a battle from the current active character in the store. */
@@ -110,6 +166,26 @@ export function buildDemoBattle(opts: BuildBattleOptions = {}): DemoBattle {
     ),
   };
 
+  // Build reserves snapshot. Their stats are baked at battle-start so
+  // mid-fight respec/equip changes don't retroactively buff the bench.
+  const reserves: ReserveChar[] = [];
+  if (opts.secondaryClassId && opts.secondaryClassId !== active.class_id) {
+    const row = store.roster.find((r) => r.class_id === opts.secondaryClassId);
+    if (row) {
+      const lvl = Math.max(row.level, 5);
+      const rEq = store.equipped[row.class_id] ?? {};
+      const rEff = computeEffectiveStats(row.class_id as ClassId, lvl, rEq, store.inventory);
+      reserves.push({
+        classId: row.class_id as ClassId,
+        level: lvl,
+        allocatedNodes: row.allocated_nodes,
+        equippedSkills: defaultActivesFor(row.class_id as ClassId),
+        maxHp: rEff.hp,
+        startingHp: rEff.hp,
+      });
+    }
+  }
+
   const playerId = state.combatants[0]!.id;
   const patronId = state.combatants[1]!.id;
   const bossId = state.combatants[2]!.id;
@@ -125,5 +201,6 @@ export function buildDemoBattle(opts: BuildBattleOptions = {}): DemoBattle {
     },
     equipped,
     classId: active.class_id,
+    reserves,
   };
 }
