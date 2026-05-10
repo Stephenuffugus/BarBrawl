@@ -54,6 +54,7 @@ export interface GameState {
   setActive: (idx: number) => void;
   allocateNode: (classId: ClassId, nodeId: string) => void;
   awardXp: (classId: ClassId, xp: number) => { levelsGained: number };
+  bumpMastery: (classId: ClassId, barType: string) => void;
   addItem: (item: Loot.Item) => void;
   addGold: (g: number) => void;
   equipItem: (classId: ClassId, item: Loot.Item) => void;
@@ -133,6 +134,17 @@ export const useGameStore = create<GameState>()(
           }),
         }));
         return { levelsGained };
+      },
+
+      bumpMastery: (classId, barType) => {
+        set((s) => ({
+          roster: s.roster.map((r) => {
+            if (r.class_id !== classId) return r;
+            const m = { ...(r.mastery as Record<string, number>) };
+            m[barType] = (m[barType] ?? 0) + 1;
+            return { ...r, mastery: m, bars_won: r.bars_won + 1 };
+          }),
+        }));
       },
 
       addItem: (item) => {

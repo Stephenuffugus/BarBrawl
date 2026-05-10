@@ -86,6 +86,7 @@ export default function BattleScreen() {
   const addGold = useGameStore((s) => s.addGold);
   const claimBar = useGameStore((s) => s.claimBar);
   const consumeItem = useGameStore((s) => s.consumeItem);
+  const bumpMastery = useGameStore((s) => s.bumpMastery);
   const activeChar = useGameStore((s) => s.active());
 
   const player = demo.state.combatants.find((c) => c.kind === 'player')!;
@@ -240,6 +241,7 @@ export default function BattleScreen() {
           itemIdGen: () => `it-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         });
         addItem(item);
+        bumpMastery(demo.classId, barTheme);
         if (params.barId) {
           claimBar({ barId: params.barId, theme: barTheme, label: barLabel });
         }
@@ -249,7 +251,7 @@ export default function BattleScreen() {
       playSfx('defeat');
     }
     return undefined;
-  }, [result, demo.classId, awardXp, addGold, addItem, claimBar, params.barId, barTheme, barLabel]);
+  }, [result, demo.classId, awardXp, addGold, addItem, bumpMastery, claimBar, params.barId, barTheme, barLabel]);
 
   // Time-since-hit drives the screen vignette overlay.
   const playerFlashActive = Date.now() - playerHitAt < 280;
