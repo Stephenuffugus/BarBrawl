@@ -87,6 +87,8 @@ export interface GameState {
   bumpMastery: (classId: ClassId, barType: string) => void;
   /** Add a Resistance Mark id. Returns true if newly added, false if already owned. */
   earnMark: (markId: string) => boolean;
+  /** Remove an item from inventory and award scaled gold (ilvl × rarity). */
+  sellItem: (itemId: string) => number;
   /**
    * Record a bar clear. Returns metadata the rewards screen surfaces:
    * which clear-of-day this was (1, 2, 3+) and whether it was the
@@ -235,6 +237,33 @@ export const useGameStore = create<GameState>()(
         if (s.marks.includes(markId)) return false;
         set((st) => ({ marks: [...st.marks, markId] }));
         return true;
+      },
+
+      sellItem: (itemId) => {
+        const s = get();
+        const item = s.inventory.find((it) => it.id === itemId);
+        if (!item) return 0;
+        const RARITY_MULT: Record<string, number> = {
+          common: 1, uncommon: 2, rare: 5, epic: 12, legendary: 30,
+        };
+        const price = Math.max(1, Math.floor(item.ilvl * (RARITY_MULT[item.rarity] ?? 1)));
+        set((st) => {
+          // Also unequip if equipped on any character.
+          const equipped = { ...st.equipped };
+          for (const cid of Object.keys(equipped)) {
+            const slots = { ...equipped[cid] };
+            for (const slot of Object.keys(slots) as Loot.ItemSlot[]) {
+              if (slots[slot] === itemId) delete slots[slot];
+            }
+            equipped[cid] = slots;
+          }
+          return {
+            inventory: st.inventory.filter((it) => it.id !== itemId),
+            gold: st.gold + price,
+            equipped,
+          };
+        });
+        return price;
       },
 
       recordBarClear: (barId) => {

@@ -31,14 +31,20 @@ const SLOT_FILTERS: readonly (Loot.ItemSlot | 'all')[] = [
   'all', 'weapon', 'outfit', 'footwear', 'trinket', 'mark',
 ];
 
+const RARITY_SELL_MULT: Record<string, number> = {
+  common: 1, uncommon: 2, rare: 5, epic: 12, legendary: 30,
+};
+
 export default function InventoryScreen() {
-  const { inventory, gold, roster, activeIdx, equipped, equipItem, marks } = useGameStore();
+  const { inventory, gold, roster, activeIdx, equipped, equipItem, sellItem, marks } = useGameStore();
   const activeChar = roster[activeIdx]!;
   const activeCls = getClass(activeChar.class_id);
   const charEquipped = equipped[activeChar.class_id] ?? {};
 
   const [filter, setFilter] = useState<Loot.ItemSlot | 'all'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [confirmSellId, setConfirmSellId] = useState<string | null>(null);
+  const [sellFeedback, setSellFeedback] = useState<string | null>(null);
 
   const visible = filter === 'all'
     ? inventory
@@ -46,6 +52,18 @@ export default function InventoryScreen() {
 
   const onEquip = (item: Loot.Item) => {
     equipItem(activeChar.class_id as ClassId, item);
+  };
+
+  const onSell = (item: Loot.Item) => {
+    if (confirmSellId !== item.id) {
+      setConfirmSellId(item.id);
+      return;
+    }
+    const earned = sellItem(item.id);
+    setConfirmSellId(null);
+    setExpandedId(null);
+    setSellFeedback(`Sold ${item.displayName} for ${earned} G`);
+    setTimeout(() => setSellFeedback(null), 2000);
   };
 
   return (
@@ -120,16 +138,26 @@ export default function InventoryScreen() {
             </PixelText>
           </Panel>
         ) : null}
+        {sellFeedback ? (
+          <Panel style={{ borderColor: UI.cursor, borderWidth: 2 }}>
+            <PixelText size={11} color={UI.cursor}>{sellFeedback}</PixelText>
+          </Panel>
+        ) : null}
         {visible.map((item) => (
           <Pressable
             key={item.id}
-            onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}
+            onPress={() => {
+              if (confirmSellId === item.id) setConfirmSellId(null);
+              setExpandedId(expandedId === item.id ? null : item.id);
+            }}
           >
             <ItemCard
               item={item}
               expanded={expandedId === item.id}
               equipped={charEquipped[item.slot] === item.id}
+              confirming={confirmSellId === item.id}
               onEquip={() => onEquip(item)}
+              onSell={() => onSell(item)}
             />
           </Pressable>
         ))}
@@ -138,8 +166,9 @@ export default function InventoryScreen() {
   );
 }
 
-function ItemCard({ item, expanded, equipped, onEquip }: {
-  item: Loot.Item; expanded: boolean; equipped: boolean; onEquip: () => void;
+function ItemCard({ item, expanded, equipped, confirming, onEquip, onSell }: {
+  item: Loot.Item; expanded: boolean; equipped: boolean; confirming: boolean;
+  onEquip: () => void; onSell: () => void;
 }) {
   const rColor = RARITY_COLOR[item.rarity];
   return (
@@ -181,17 +210,33 @@ function ItemCard({ item, expanded, equipped, onEquip }: {
         </PixelText>
       ) : null}
 
-      {expanded && !equipped ? (
-        <Pressable
-          onPress={(e) => { e.stopPropagation?.(); onEquip(); }}
-          style={{
-            alignItems: 'center', paddingVertical: 6, marginTop: 8,
-            borderColor: UI.cursor, borderWidth: 2,
-            backgroundColor: UI.bg,
-          }}
-        >
-          <PixelText size={12} color={UI.cursor}>▶ EQUIP</PixelText>
-        </Pressable>
+      {expanded ? (
+        <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
+          {!equipped ? (
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); onEquip(); }}
+              style={{
+                flex: 1, alignItems: 'center', paddingVertical: 6,
+                borderColor: UI.cursor, borderWidth: 2,
+                backgroundColor: UI.bg,
+              }}
+            >
+              <PixelText size={12} color={UI.cursor}>▶ EQUIP</PixelText>
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={(e) => { e.stopPropagation?.(); onSell(); }}
+            style={{
+              flex: 1, alignItems: 'center', paddingVertical: 6,
+              borderColor: confirming ? UI.hpLow : UI.hpHalf, borderWidth: 2,
+              backgroundColor: UI.bg,
+            }}
+          >
+            <PixelText size={12} color={confirming ? UI.hpLow : UI.hpHalf}>
+              {confirming ? 'CONFIRM SELL' : `SELL ${Math.max(1, item.ilvl * (RARITY_SELL_MULT[item.rarity] ?? 1))} G`}
+            </PixelText>
+          </Pressable>
+        </View>
       ) : null}
     </Panel>
   );
