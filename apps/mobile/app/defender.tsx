@@ -11,10 +11,11 @@ import { PixelText } from '@/components/PixelText';
 import { UI, CLASS_ACCENT } from '@/design/palette';
 import { PIXEL } from '@/design/scale';
 import { useGameStore } from '@/state/game-store';
+import { computeEffectiveStats } from '@/state/effective-stats';
 
 export default function DefenderScreen() {
   const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string }>();
-  const { roster, claimedBars, stationDefender, defenderForBar } = useGameStore();
+  const { roster, claimedBars, stationDefender, defenderForBar, equipped, inventory } = useGameStore();
 
   const barId = params.barId ?? '';
   const claim = barId ? defenderForBar(barId) : undefined;
@@ -22,7 +23,10 @@ export default function DefenderScreen() {
 
   const onPick = (classId: ClassId) => {
     if (!barId) return;
-    stationDefender(barId, classId);
+    const row = roster.find((r) => r.class_id === classId);
+    if (!row) return;
+    const effective = computeEffectiveStats(classId, row.level, equipped[classId] ?? {}, inventory);
+    stationDefender(barId, classId, effective.hp);
     router.replace('/map');
   };
 

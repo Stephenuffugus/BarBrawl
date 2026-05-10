@@ -29,6 +29,10 @@ export interface ClaimedBar {
   claimedAtMs: number;
   /** When the current defender was stationed. */
   stationedAtMs: number | null;
+  /** Snapshot of the defender's max HP at station time (for decay calc). */
+  defenderMaxHp: number;
+  /** Last time coins were claimed from this bar (resets accrual). */
+  coinsClaimedAtMs: number | null;
 }
 
 export interface GameState {
@@ -56,8 +60,9 @@ export interface GameState {
   unequipSlot: (classId: ClassId, slot: Loot.ItemSlot) => void;
   consumeItem: (classId: ClassId, consumableId: string) => boolean;
   claimBar: (bar: { barId: string; theme: string; label: string }) => void;
-  stationDefender: (barId: string, classId: ClassId) => void;
+  stationDefender: (barId: string, classId: ClassId, defenderMaxHp: number) => void;
   unstationDefender: (barId: string) => void;
+  collectBarCoins: (barId: string) => number;
   toggleMuted: () => void;
   resetDemo: () => void;
 }
@@ -184,20 +189,29 @@ export const useGameStore = create<GameState>()(
             defenderClassId: null,
             claimedAtMs: Date.now(),
             stationedAtMs: null,
+            defenderMaxHp: 0,
+            coinsClaimedAtMs: null,
           };
           return { claimedBars: [...s.claimedBars, claim] };
         });
       },
 
-      stationDefender: (barId, classId) => {
+      stationDefender: (barId, classId, defenderMaxHp) => {
+        const now = Date.now();
         set((s) => ({
           claimedBars: s.claimedBars.map((b) => {
             // Pull the defender off any other bar (one defender per char).
             if (b.defenderClassId === classId && b.barId !== barId) {
-              return { ...b, defenderClassId: null, stationedAtMs: null };
+              return { ...b, defenderClassId: null, stationedAtMs: null, coinsClaimedAtMs: null };
             }
             if (b.barId !== barId) return b;
-            return { ...b, defenderClassId: classId, stationedAtMs: Date.now() };
+            return {
+              ...b,
+              defenderClassId: classId,
+              stationedAtMs: now,
+              defenderMaxHp,
+              coinsClaimedAtMs: now,
+            };
           }),
         }));
       },
@@ -205,9 +219,32 @@ export const useGameStore = create<GameState>()(
       unstationDefender: (barId) => {
         set((s) => ({
           claimedBars: s.claimedBars.map((b) =>
-            b.barId === barId ? { ...b, defenderClassId: null, stationedAtMs: null } : b,
+            b.barId === barId
+              ? { ...b, defenderClassId: null, stationedAtMs: null, coinsClaimedAtMs: null }
+              : b,
           ),
         }));
+      },
+
+      collectBarCoins: (barId) => {
+        const s = get();
+        const bar = s.claimedBars.find((b) => b.barId === barId);
+        if (!bar || !bar.stationedAtMs) return 0;
+        const since = bar.coinsClaimedAtMs ?? bar.stationedAtMs;
+        const hours = Math.max(0, (Date.now() - since) / (1000 * 60 * 60));
+        // 2/hr, capped at 75 across the account per day. Simple per-bar
+        // local cap for now: 75/day * (hours/24).
+        const raw = Math.floor(2 * hours);
+        const dailyLimit = Math.floor((hours / 24) * 75);
+        const earned = Math.min(raw, dailyLimit);
+        if (earned <= 0) return 0;
+        set((st) => ({
+          gold: st.gold + earned,
+          claimedBars: st.claimedBars.map((b) =>
+            b.barId === barId ? { ...b, coinsClaimedAtMs: Date.now() } : b,
+          ),
+        }));
+        return earned;
       },
 
       toggleMuted: () => {

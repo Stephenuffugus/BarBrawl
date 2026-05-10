@@ -1,22 +1,23 @@
 // Territory screen — view of every bar you've claimed. Shows defender,
-// time stationed, simulated coin accrual (spec §5.5: 2 coins/hr per
-// defender, capped at 75/day account-wide). Tap a row to manage that
-// bar's defender.
-//
-// Coin accrual is read-only here for v1. A "CLAIM" action that moves
-// simulated coins into wallet gold lands when we wire to a real backend.
+// time stationed, simulated coin accrual + HP decay (spec §5.5: 2/hr per
+// defender, capped 75/day; 5% maxHp/day decay). Tap CLAIM to move
+// accrued coins to wallet, RECALL to unstation, or the row to switch
+// the defender.
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { getClass } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
+import { HpBar } from '@/components/HpBar';
 import { UI, BAR_PALETTES, CLASS_ACCENT, type BarThemeId } from '@/design/palette';
 import { useGameStore, type ClaimedBar } from '@/state/game-store';
+import { playSfx } from '@/audio/sfx';
 
 const COINS_PER_HOUR_PER_DEFENDER = 2;
 const ACCOUNT_DAILY_CAP = 75;
+const HP_DECAY_PCT_PER_DAY = 0.05;
 
 function isBarTheme(s: string): s is BarThemeId {
   return s in BAR_PALETTES;
@@ -27,21 +28,51 @@ function hoursSince(ms: number | null): number {
   return Math.max(0, (Date.now() - ms) / (1000 * 60 * 60));
 }
 
-function simulateCoinsForBar(bar: ClaimedBar): { hours: number; coins: number } {
-  if (!bar.defenderClassId || !bar.stationedAtMs) return { hours: 0, coins: 0 };
-  const hours = hoursSince(bar.stationedAtMs);
-  const raw = hours * COINS_PER_HOUR_PER_DEFENDER;
-  const dailyCap = (hours / 24) * ACCOUNT_DAILY_CAP;
-  return { hours, coins: Math.floor(Math.min(raw, dailyCap)) };
+function computePending(bar: ClaimedBar) {
+  if (!bar.defenderClassId || !bar.stationedAtMs) {
+    return { hours: 0, hp: 0, maxHp: 0, claimable: 0 };
+  }
+  const stationedHours = hoursSince(bar.stationedAtMs);
+  const claimSince = bar.coinsClaimedAtMs ?? bar.stationedAtMs;
+  const sinceClaimHours = hoursSince(claimSince);
+  const decayed = Math.ceil(bar.defenderMaxHp * HP_DECAY_PCT_PER_DAY * (stationedHours / 24));
+  const currentHp = Math.max(0, bar.defenderMaxHp - decayed);
+  const raw = Math.floor(COINS_PER_HOUR_PER_DEFENDER * sinceClaimHours);
+  const dailyLimit = Math.floor((sinceClaimHours / 24) * ACCOUNT_DAILY_CAP);
+  return {
+    hours: stationedHours,
+    hp: currentHp,
+    maxHp: bar.defenderMaxHp,
+    claimable: Math.min(raw, dailyLimit),
+  };
 }
 
 export default function TerritoryScreen() {
-  const { claimedBars } = useGameStore();
-  const totalCoins = claimedBars.reduce((sum, b) => sum + simulateCoinsForBar(b).coins, 0);
+  const { claimedBars, collectBarCoins, unstationDefender } = useGameStore();
+  const [bumper, setBumper] = useState(0); // forces rerender on claim
+
+  const totalClaimable = claimedBars.reduce((sum, b) => sum + computePending(b).claimable, 0);
   const defendedCount = claimedBars.filter((b) => b.defenderClassId).length;
 
+  const onClaim = (barId: string) => {
+    const earned = collectBarCoins(barId);
+    if (earned > 0) playSfx('menu_select');
+    setBumper((b) => b + 1);
+  };
+  const onRecall = (barId: string) => {
+    unstationDefender(barId);
+    playSfx('menu_move');
+    setBumper((b) => b + 1);
+  };
+  const onOpenDefender = (bar: ClaimedBar) => {
+    router.push({
+      pathname: '/defender',
+      params: { barId: bar.barId, theme: bar.theme, label: bar.label },
+    });
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: UI.bg, paddingTop: 24 }}>
+    <View style={{ flex: 1, backgroundColor: UI.bg, paddingTop: 24 }} key={bumper}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, marginBottom: 8 }}>
         <Pressable onPress={() => router.back()}>
           <PixelText size={12} color={UI.cursor}>◀ BACK</PixelText>
@@ -61,8 +92,8 @@ export default function TerritoryScreen() {
             <PixelText size={20} color={UI.hpFull}>{defendedCount}</PixelText>
           </View>
           <View>
-            <PixelText size={11} color={UI.textDim}>EARNED (sim)</PixelText>
-            <PixelText size={20} color={UI.cursor}>{totalCoins} G</PixelText>
+            <PixelText size={11} color={UI.textDim}>UNCLAIMED</PixelText>
+            <PixelText size={20} color={UI.cursor}>{totalClaimable} G</PixelText>
           </View>
         </View>
       </Panel>
@@ -76,31 +107,36 @@ export default function TerritoryScreen() {
           </Panel>
         ) : null}
         {claimedBars.map((bar) => (
-          <ClaimRow key={bar.barId} bar={bar} />
+          <ClaimRow
+            key={bar.barId}
+            bar={bar}
+            onClaim={() => onClaim(bar.barId)}
+            onRecall={() => onRecall(bar.barId)}
+            onOpen={() => onOpenDefender(bar)}
+          />
         ))}
       </ScrollView>
     </View>
   );
 }
 
-function ClaimRow({ bar }: { bar: ClaimedBar }) {
+function ClaimRow({
+  bar, onClaim, onRecall, onOpen,
+}: {
+  bar: ClaimedBar;
+  onClaim: () => void;
+  onRecall: () => void;
+  onOpen: () => void;
+}) {
   const cls = bar.defenderClassId ? getClass(bar.defenderClassId) : null;
   const accent = cls ? CLASS_ACCENT[cls.id as keyof typeof CLASS_ACCENT] : UI.textDim;
-  const sim = simulateCoinsForBar(bar);
+  const sim = computePending(bar);
   const themePalette = isBarTheme(bar.theme) ? BAR_PALETTES[bar.theme as BarThemeId] : BAR_PALETTES.dive;
 
-  const open = () => {
-    router.push({
-      pathname: '/defender',
-      params: { barId: bar.barId, theme: bar.theme, label: bar.label },
-    });
-  };
-
   return (
-    <Pressable onPress={open}>
-      <Panel style={{ borderColor: cls ? accent : UI.border, borderWidth: 2 }}>
+    <Panel style={{ borderColor: cls ? accent : UI.border, borderWidth: 2 }}>
+      <Pressable onPress={onOpen}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          {/* Theme swatch */}
           <View style={{
             width: 32, height: 32,
             backgroundColor: themePalette[2],
@@ -127,15 +163,42 @@ function ClaimRow({ bar }: { bar: ClaimedBar }) {
               </PixelText>
             )}
           </View>
-
-          {sim.coins > 0 ? (
-            <View style={{ alignItems: 'flex-end' }}>
-              <PixelText size={9} color={UI.textDim}>EARNED</PixelText>
-              <PixelText size={14} color={UI.cursor}>{sim.coins} G</PixelText>
-            </View>
-          ) : null}
         </View>
-      </Panel>
-    </Pressable>
+      </Pressable>
+
+      {cls ? (
+        <View style={{ marginTop: 8, gap: 6 }}>
+          <HpBar hp={sim.hp} maxHp={sim.maxHp} widthCells={26} drainMs={0} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Pressable
+              onPress={onClaim}
+              disabled={sim.claimable <= 0}
+              style={{
+                flex: 1, alignItems: 'center', paddingVertical: 6,
+                borderColor: sim.claimable > 0 ? UI.cursor : UI.borderDark,
+                borderWidth: 2,
+                backgroundColor: UI.bg,
+                opacity: sim.claimable > 0 ? 1 : 0.5,
+              }}
+            >
+              <PixelText size={11} color={sim.claimable > 0 ? UI.cursor : UI.textDim}>
+                CLAIM {sim.claimable} G
+              </PixelText>
+            </Pressable>
+            <Pressable
+              onPress={onRecall}
+              style={{
+                flex: 1, alignItems: 'center', paddingVertical: 6,
+                borderColor: UI.hpHalf,
+                borderWidth: 2,
+                backgroundColor: UI.bg,
+              }}
+            >
+              <PixelText size={11} color={UI.hpHalf}>RECALL</PixelText>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+    </Panel>
   );
 }
