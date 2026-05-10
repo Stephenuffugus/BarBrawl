@@ -12,6 +12,7 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
+    "@barbrawl/game-core": "workspace:*",
     "expo": "~52.0.0",
     "expo-av": "~15.0.0",
     "expo-haptics": "~14.0.0",

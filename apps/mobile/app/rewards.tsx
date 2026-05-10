@@ -1,0 +1,133 @@
+// Post-battle rewards screen. Shows the latest loot drop, XP earned, and
+// gold awarded. Reads the most-recent inventory item from the store
+// (battle.tsx pushed it there on win).
+
+import React from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
+import { router } from 'expo-router';
+import type { Loot } from '@barbrawl/game-core';
+import { Panel } from '@/components/Panel';
+import { PixelText } from '@/components/PixelText';
+import { UI } from '@/design/palette';
+import { PIXEL } from '@/design/scale';
+import { useGameStore } from '@/state/game-store';
+
+const RARITY_COLOR: Record<Loot.Rarity, string> = {
+  common: '#9ca3af',
+  uncommon: '#22c55e',
+  rare: '#3b82f6',
+  epic: '#a855f7',
+  legendary: '#f59e0b',
+};
+
+const SLOT_LABEL: Record<Loot.ItemSlot, string> = {
+  weapon: 'WEAPON',
+  outfit: 'OUTFIT',
+  footwear: 'FOOTWEAR',
+  trinket: 'TRINKET',
+  mark: 'MARK',
+};
+
+export default function RewardsScreen() {
+  const { inventory, gold } = useGameStore();
+  const latest = inventory[inventory.length - 1];
+
+  return (
+    <View style={{ flex: 1, backgroundColor: UI.bg, paddingTop: 24 }}>
+      <View style={{ alignItems: 'center', marginBottom: 12 }}>
+        <PixelText size={28} color={UI.cursor} style={{ letterSpacing: 4 }}>
+          VICTORY
+        </PixelText>
+        <View style={{ width: 200, height: PIXEL, backgroundColor: UI.cursor, marginTop: 8 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 24, gap: 10 }}>
+        <Panel>
+          <PixelText size={11} color={UI.textDim}>YOU EARNED</PixelText>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+            <View>
+              <PixelText size={11} color={UI.textDim}>EXPERIENCE</PixelText>
+              <PixelText size={20} color={UI.hpFull}>+100 XP</PixelText>
+            </View>
+            <View>
+              <PixelText size={11} color={UI.textDim}>GOLD</PixelText>
+              <PixelText size={20} color={UI.cursor}>+50 G</PixelText>
+            </View>
+            <View>
+              <PixelText size={11} color={UI.textDim}>TOTAL GOLD</PixelText>
+              <PixelText size={20} color={UI.text}>{gold}</PixelText>
+            </View>
+          </View>
+        </Panel>
+
+        {latest ? <ItemPanel item={latest} /> : (
+          <Panel>
+            <PixelText size={11} color={UI.textDim}>No drops this run.</PixelText>
+          </Panel>
+        )}
+
+        <Panel>
+          <PixelText size={11} color={UI.textDim}>INVENTORY</PixelText>
+          <PixelText size={14} color={UI.text} style={{ marginTop: 2 }}>
+            {inventory.length} item{inventory.length === 1 ? '' : 's'}
+          </PixelText>
+        </Panel>
+      </ScrollView>
+
+      <View style={{ paddingHorizontal: 12, paddingBottom: 32 }}>
+        <Pressable
+          onPress={() => router.replace('/map')}
+          style={{
+            alignItems: 'center', paddingVertical: 12,
+            borderColor: UI.cursor, borderWidth: PIXEL,
+            backgroundColor: UI.panelFill,
+          }}
+        >
+          <PixelText size={16} color={UI.cursor}>▶ BACK TO STREETS</PixelText>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function ItemPanel({ item }: { item: Loot.Item }) {
+  const rColor = RARITY_COLOR[item.rarity];
+  return (
+    <Panel style={{ borderColor: rColor, borderWidth: PIXEL }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+        <PixelText size={11} color={rColor}>
+          {item.rarity.toUpperCase()} {SLOT_LABEL[item.slot]}
+        </PixelText>
+        <PixelText size={11} color={UI.textDim}>iLVL {item.ilvl}</PixelText>
+      </View>
+      <PixelText size={16} color={UI.text} style={{ marginTop: 4 }}>
+        {item.displayName}
+      </PixelText>
+      <PixelText size={10} color={UI.textDim} style={{ marginTop: 2 }}>
+        {item.implicitText}
+      </PixelText>
+      {item.prefixes.length + item.suffixes.length > 0 ? (
+        <View style={{ marginTop: 8, gap: 2 }}>
+          {item.prefixes.map((a) => (
+            <PixelText key={a.affixId} size={10} color={UI.text}>
+              · {a.effectText}
+            </PixelText>
+          ))}
+          {item.suffixes.map((a) => (
+            <PixelText key={a.affixId} size={10} color={UI.text}>
+              · {a.effectText}
+            </PixelText>
+          ))}
+        </View>
+      ) : null}
+      {item.anointment ? (
+        <View style={{ marginTop: 8, padding: 6, backgroundColor: '#2a1a08' }}>
+          <PixelText size={9} color={UI.cursor}>ANOINTMENT</PixelText>
+          <PixelText size={10} color={UI.cursor} style={{ marginTop: 2 }}>
+            {item.anointment.effectText}
+          </PixelText>
+        </View>
+      ) : null}
+    </Panel>
+  );
+}
