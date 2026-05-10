@@ -4,7 +4,7 @@
 import React, { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
-import { getClass, type ClassId, type Loot } from '@barbrawl/game-core';
+import { getClass, Gating, type ClassId, type Loot } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
 import { UI } from '@/design/palette';
@@ -32,7 +32,7 @@ const SLOT_FILTERS: readonly (Loot.ItemSlot | 'all')[] = [
 ];
 
 export default function InventoryScreen() {
-  const { inventory, gold, roster, activeIdx, equipped, equipItem } = useGameStore();
+  const { inventory, gold, roster, activeIdx, equipped, equipItem, marks } = useGameStore();
   const activeChar = roster[activeIdx]!;
   const activeCls = getClass(activeChar.class_id);
   const charEquipped = equipped[activeChar.class_id] ?? {};
@@ -64,6 +64,28 @@ export default function InventoryScreen() {
           {activeCls.name}
         </PixelText>
       </Panel>
+
+      {marks.length > 0 ? (
+        <Panel style={{ marginHorizontal: 12, marginBottom: 8 }}>
+          <PixelText size={10} color={UI.textDim}>RESISTANCE MARKS · {marks.length}/7</PixelText>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 }}>
+            {marks.map((id) => {
+              const def = Gating.RESISTANCE_MARK_BY_ID[id];
+              if (!def) return null;
+              return (
+                <View key={id} style={{
+                  paddingHorizontal: 6, paddingVertical: 4,
+                  borderColor: UI.cursor, borderWidth: 1,
+                  backgroundColor: UI.bg,
+                }}>
+                  <PixelText size={9} color={UI.cursor}>{def.against.toUpperCase()}</PixelText>
+                  <PixelText size={8} color={UI.text}>{def.name}</PixelText>
+                </View>
+              );
+            })}
+          </View>
+        </Panel>
+      ) : null}
 
       {/* Slot filter chips */}
       <ScrollView

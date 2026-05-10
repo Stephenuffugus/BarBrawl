@@ -24,7 +24,7 @@ function isBarTheme(s: string | undefined): s is BarThemeId {
 }
 
 export default function DungeonScreen() {
-  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string }>();
+  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string; tier?: string }>();
   const theme: BarThemeId = isBarTheme(params.theme) ? params.theme : 'dive';
   const label = params.label?.trim() || 'A nameless bar';
 
@@ -55,9 +55,10 @@ export default function DungeonScreen() {
       params: {
         barId: params.barId ?? '',
         theme, label,
+        tier: params.tier ?? '1',
       },
     });
-  }, [params.barId, theme, label]);
+  }, [params.barId, params.tier, theme, label]);
 
   const tryMove = useCallback((d: Direction) => {
     setDir(d);

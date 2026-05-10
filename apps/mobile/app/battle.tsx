@@ -12,7 +12,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Combat, Loot, type RhythmResult, type RhythmQuality } from '@barbrawl/game-core';
+import { Combat, Loot, Gating, type RhythmResult, type RhythmQuality } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
 import { PixelGrid } from '@/components/PixelGrid';
@@ -93,7 +93,7 @@ function buildSummary(demo: DemoBattle, result: 'win' | 'loss', barTheme: BarThe
 }
 
 export default function BattleScreen() {
-  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string }>();
+  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string; tier?: string }>();
   const barTheme: BarThemeId = isBarTheme(params.theme) ? params.theme : 'dive';
   const barLabel = (params.label ?? '').trim() || 'A nameless bar';
 
@@ -117,6 +117,7 @@ export default function BattleScreen() {
   const claimBar = useGameStore((s) => s.claimBar);
   const consumeItem = useGameStore((s) => s.consumeItem);
   const bumpMastery = useGameStore((s) => s.bumpMastery);
+  const earnMark = useGameStore((s) => s.earnMark);
   const applyBattleToQuests = useGameStore((s) => s.applyBattleToQuests);
   const activeChar = useGameStore((s) => s.active());
 
@@ -277,6 +278,13 @@ export default function BattleScreen() {
         });
         addItem(item);
         bumpMastery(demo.classId, barTheme);
+        // Tier-3+ wins drop the matching damage-type Mark (per spec §3.1).
+        const tierStr = (params.tier as string | undefined) ?? '1';
+        const tier = parseInt(tierStr, 10) || 1;
+        if (tier >= 3) {
+          const dmgType = Gating.BAR_THEME_DAMAGE[barTheme];
+          earnMark(`mark_${dmgType}`);
+        }
         if (params.barId) {
           claimBar({ barId: params.barId, theme: barTheme, label: barLabel });
         }
@@ -286,7 +294,7 @@ export default function BattleScreen() {
       playSfx('defeat');
     }
     return undefined;
-  }, [result, demo, demo.classId, awardXp, addGold, addItem, bumpMastery, claimBar, applyBattleToQuests, params.barId, barTheme, barLabel]);
+  }, [result, demo, demo.classId, awardXp, addGold, addItem, bumpMastery, earnMark, claimBar, applyBattleToQuests, params.barId, params.tier, barTheme, barLabel]);
 
   // Time-since-hit drives the screen vignette overlay.
   const playerFlashActive = Date.now() - playerHitAt < 280;

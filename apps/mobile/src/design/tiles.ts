@@ -36,6 +36,8 @@ export interface TileDef {
   label?: string;
   /** Bar theme tint for the door + battle context. */
   theme?: 'dive' | 'pub' | 'nightclub' | 'brewery';
+  /** Bar tier 1-6. Tier 4+ requires the matching Resistance Mark. */
+  tier?: 1 | 2 | 3 | 4 | 5 | 6;
 }
 
 export const TILES: Readonly<Record<TileId, TileDef>> = {
@@ -50,13 +52,13 @@ export const TILES: Readonly<Record<TileId, TileDef>> = {
   bar_brewery:   { fill: '#403018', accent: '#c89048', passable: false },
 
   door_dive:      { fill: '#a06028', accent: '#f8c878', passable: true,
-                    kind: 'door', barId: 'b-rusty-nail',     label: "The Rusty Nail",     theme: 'dive' },
+                    kind: 'door', barId: 'b-rusty-nail',     label: "The Rusty Nail",     theme: 'dive', tier: 1 },
   door_pub:       { fill: '#5da870', accent: '#c8f0a0', passable: true,
-                    kind: 'door', barId: 'b-greens',         label: "Green's Pub",        theme: 'pub' },
+                    kind: 'door', barId: 'b-greens',         label: "Green's Pub",        theme: 'pub',  tier: 3 },
   door_nightclub: { fill: '#e000a0', accent: '#f870f0', passable: true,
-                    kind: 'door', barId: 'b-mission-blackout', label: 'Mission Blackout', theme: 'nightclub' },
+                    kind: 'door', barId: 'b-mission-blackout', label: 'Mission Blackout', theme: 'nightclub', tier: 5 },
   door_brewery:   { fill: '#c89048', accent: '#f8e0a0', passable: true,
-                    kind: 'door', barId: 'b-hop-yard',       label: 'Hop Yard Brewery',   theme: 'brewery' },
+                    kind: 'door', barId: 'b-hop-yard',       label: 'Hop Yard Brewery',   theme: 'brewery', tier: 4 },
 
   sign: { fill: '#403028', accent: '#c89048', passable: false },
 };

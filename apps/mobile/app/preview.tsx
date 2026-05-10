@@ -5,7 +5,7 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { getClass } from '@barbrawl/game-core';
+import { getClass, Gating } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
 import { PixelGrid } from '@/components/PixelGrid';
@@ -35,20 +35,28 @@ const THEME_BOSS_TITLE: Record<BarThemeId, string> = {
 };
 
 export default function PreviewScreen() {
-  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string }>();
+  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string; tier?: string }>();
   const theme: BarThemeId = isBarTheme(params.theme) ? params.theme : 'dive';
   const label = params.label?.trim() || 'A nameless bar';
+  const tier = Math.max(1, Math.min(6, parseInt(params.tier ?? '1', 10) || 1));
 
-  const { active } = useGameStore.getState();
+  const { active, marks } = useGameStore();
   const charRow = active();
   const cls = getClass(charRow.class_id);
   const accent = CLASS_ACCENT[charRow.class_id as keyof typeof CLASS_ACCENT];
   const hp = cls.baseStats.hp + (charRow.level - 1) * 6;
 
+  // Metroidvania gate: tier 4+ requires matching damage-type Resistance Mark.
+  const dmgType = Gating.BAR_THEME_DAMAGE[theme];
+  const requiredMark = `mark_${dmgType}`;
+  const hasMark = marks.includes(requiredMark);
+  const locked = tier >= Gating.GATING_BEGINS_AT_TIER && !hasMark;
+
   const enterCombat = () => {
+    if (locked) return;
     router.push({
       pathname: '/dungeon',
-      params: { barId: params.barId ?? '', theme, label },
+      params: { barId: params.barId ?? '', theme, label, tier: String(tier) },
     });
   };
 
@@ -58,7 +66,9 @@ export default function PreviewScreen() {
         <Pressable onPress={() => router.back()}>
           <PixelText size={12} color={UI.cursor}>◀ LEAVE</PixelText>
         </Pressable>
-        <PixelText size={11} color={UI.textDim}>{theme.toUpperCase()}</PixelText>
+        <PixelText size={11} color={UI.textDim}>
+          T{tier} · {theme.toUpperCase()} · {dmgType.toUpperCase()}
+        </PixelText>
       </View>
 
       <View style={{ alignItems: 'center', marginVertical: 12 }}>
@@ -105,16 +115,33 @@ export default function PreviewScreen() {
         </View>
       </Panel>
 
+      {locked ? (
+        <Panel style={{ marginHorizontal: 12, marginBottom: 8, borderColor: UI.hpLow, borderWidth: PIXEL }}>
+          <PixelText size={11} color={UI.hpLow}>LOCKED — TIER {tier}+</PixelText>
+          <PixelText size={10} color={UI.text} style={{ marginTop: 4 }}>
+            This place hits {dmgType.toUpperCase()} damage. You need a matching
+            Resistance Mark to survive past Tier {Gating.GATING_BEGINS_AT_TIER - 1}.
+          </PixelText>
+          <PixelText size={10} color={UI.textDim} style={{ marginTop: 4 }}>
+            Marks drop from Tier 3 wins of {theme} bars. Find one elsewhere first.
+          </PixelText>
+        </Panel>
+      ) : null}
+
       <View style={{ paddingHorizontal: 12 }}>
         <Pressable
           onPress={enterCombat}
+          disabled={locked}
           style={{
             alignItems: 'center', paddingVertical: 14,
-            borderColor: UI.cursor, borderWidth: PIXEL,
+            borderColor: locked ? UI.borderDark : UI.cursor, borderWidth: PIXEL,
             backgroundColor: UI.panelFill,
+            opacity: locked ? 0.5 : 1,
           }}
         >
-          <PixelText size={16} color={UI.cursor}>▶ FIGHT YOUR WAY IN</PixelText>
+          <PixelText size={16} color={locked ? UI.textDim : UI.cursor}>
+            {locked ? '🔒 LOCKED' : '▶ FIGHT YOUR WAY IN'}
+          </PixelText>
         </Pressable>
       </View>
     </View>

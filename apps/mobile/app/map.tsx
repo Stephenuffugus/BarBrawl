@@ -193,6 +193,7 @@ export default function MapScreen() {
         barId: adjacentDoor.barId ?? '',
         theme: adjacentDoor.theme ?? 'dive',
         label: adjacentDoor.label ?? 'Bar',
+        tier: String(adjacentDoor.tier ?? 1),
       },
     });
   }, [adjacentDoor]);
@@ -243,9 +244,14 @@ export default function MapScreen() {
             >
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
                 <PixelText size={12} color={UI.cursor}>▶ {adjacentDoor.label}</PixelText>
-                {claim ? (
-                  <PixelText size={9} color={UI.hpFull}>YOURS</PixelText>
-                ) : null}
+                <View style={{ flexDirection: 'row', gap: 4 }}>
+                  {adjacentDoor.tier ? (
+                    <PixelText size={9} color={UI.hpHalf}>T{adjacentDoor.tier}</PixelText>
+                  ) : null}
+                  {claim ? (
+                    <PixelText size={9} color={UI.hpFull}>YOURS</PixelText>
+                  ) : null}
+                </View>
               </View>
               {claim ? (
                 <PixelText size={10} color={UI.text} style={{ marginTop: 4 }}>

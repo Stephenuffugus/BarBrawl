@@ -70,6 +70,8 @@ export interface GameState {
   dailyQuests: DailyQuestState | null;
   /** Total XP earned across all characters — feeds Crawl Pass tier. */
   crawlPassXp: number;
+  /** Resistance Mark IDs the player owns. Tier 4+ entries require matching mark. */
+  marks: readonly string[];
 
   // selectors
   active: () => CharacterRow;
@@ -80,6 +82,8 @@ export interface GameState {
   allocateNode: (classId: ClassId, nodeId: string) => void;
   awardXp: (classId: ClassId, xp: number) => { levelsGained: number };
   bumpMastery: (classId: ClassId, barType: string) => void;
+  /** Add a Resistance Mark id. Returns true if newly added, false if already owned. */
+  earnMark: (markId: string) => boolean;
   /** Reset all allocations on a character. Cost: level² gold or 1 token. */
   respecCharacter: (classId: ClassId, useToken: boolean) =>
     | { ok: true; goldSpent: number; tokensSpent: number }
@@ -140,6 +144,7 @@ export const useGameStore = create<GameState>()(
       pendingLoginRewards: [],
       dailyQuests: null,
       crawlPassXp: 0,
+      marks: [],
 
       active: () => get().roster[get().activeIdx]!,
       defenderForBar: (barId) => get().claimedBars.find((b) => b.barId === barId),
@@ -213,6 +218,13 @@ export const useGameStore = create<GameState>()(
             return { ...r, mastery: m, bars_won: r.bars_won + 1 };
           }),
         }));
+      },
+
+      earnMark: (markId) => {
+        const s = get();
+        if (s.marks.includes(markId)) return false;
+        set((st) => ({ marks: [...st.marks, markId] }));
+        return true;
       },
 
       addItem: (item) => {
@@ -411,7 +423,7 @@ export const useGameStore = create<GameState>()(
           gold: 250, respecTokens: 5, inventory: [], roster: freshRoster(), activeIdx: 1,
           equipped: {}, claimedBars: [], audioMuted: false,
           loginStreak: freshStreak(), pendingLoginRewards: [], dailyQuests: null,
-          crawlPassXp: 0,
+          crawlPassXp: 0, marks: [],
         });
       },
     }),
@@ -433,6 +445,7 @@ export const useGameStore = create<GameState>()(
         loginStreak: s.loginStreak,
         dailyQuests: s.dailyQuests,
         crawlPassXp: s.crawlPassXp,
+        marks: s.marks,
       }),
     },
   ),
