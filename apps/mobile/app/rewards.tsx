@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import type { Loot } from '@barbrawl/game-core';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
@@ -29,8 +29,21 @@ const SLOT_LABEL: Record<Loot.ItemSlot, string> = {
 };
 
 export default function RewardsScreen() {
-  const { inventory, gold } = useGameStore();
+  const params = useLocalSearchParams<{ barId?: string; theme?: string; label?: string }>();
+  const { inventory, gold, defenderForBar } = useGameStore();
   const latest = inventory[inventory.length - 1];
+  const claim = params.barId ? defenderForBar(params.barId) : undefined;
+
+  const goStation = () => {
+    router.push({
+      pathname: '/defender',
+      params: {
+        barId: params.barId ?? '',
+        theme: params.theme ?? 'dive',
+        label: params.label ?? 'Bar',
+      },
+    });
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: UI.bg, paddingTop: 24 }}>
@@ -39,6 +52,11 @@ export default function RewardsScreen() {
           VICTORY
         </PixelText>
         <View style={{ width: 200, height: PIXEL, backgroundColor: UI.cursor, marginTop: 8 }} />
+        {params.label ? (
+          <PixelText size={11} color={UI.textDim} style={{ marginTop: 8 }}>
+            YOU CLEARED {params.label.toUpperCase()}
+          </PixelText>
+        ) : null}
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 24, gap: 10 }}>
@@ -66,6 +84,25 @@ export default function RewardsScreen() {
           </Panel>
         )}
 
+        {/* Claim status */}
+        {claim ? (
+          <Panel style={{ borderColor: UI.cursor, borderWidth: PIXEL }}>
+            <PixelText size={11} color={UI.cursor}>BAR CLAIMED</PixelText>
+            <PixelText size={14} color={UI.text} style={{ marginTop: 4 }}>
+              {claim.label}
+            </PixelText>
+            {claim.defenderClassId ? (
+              <PixelText size={10} color={UI.hpFull} style={{ marginTop: 2 }}>
+                Defender stationed.
+              </PixelText>
+            ) : (
+              <PixelText size={10} color={UI.textDim} style={{ marginTop: 2 }}>
+                Undefended. Station a fighter to earn while you sleep.
+              </PixelText>
+            )}
+          </Panel>
+        ) : null}
+
         <Panel>
           <PixelText size={11} color={UI.textDim}>INVENTORY</PixelText>
           <PixelText size={14} color={UI.text} style={{ marginTop: 2 }}>
@@ -74,16 +111,30 @@ export default function RewardsScreen() {
         </Panel>
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 12, paddingBottom: 32 }}>
+      <View style={{ paddingHorizontal: 12, paddingBottom: 32, gap: 8 }}>
+        {claim ? (
+          <Pressable
+            onPress={goStation}
+            style={{
+              alignItems: 'center', paddingVertical: 12,
+              borderColor: UI.cursor, borderWidth: PIXEL,
+              backgroundColor: UI.panelFill,
+            }}
+          >
+            <PixelText size={14} color={UI.cursor}>
+              ▶ {claim.defenderClassId ? 'CHANGE DEFENDER' : 'STATION A DEFENDER'}
+            </PixelText>
+          </Pressable>
+        ) : null}
         <Pressable
           onPress={() => router.replace('/map')}
           style={{
             alignItems: 'center', paddingVertical: 12,
-            borderColor: UI.cursor, borderWidth: PIXEL,
-            backgroundColor: UI.panelFill,
+            borderColor: UI.border, borderWidth: PIXEL,
+            backgroundColor: UI.bg,
           }}
         >
-          <PixelText size={16} color={UI.cursor}>▶ BACK TO STREETS</PixelText>
+          <PixelText size={14} color={UI.text}>BACK TO STREETS</PixelText>
         </Pressable>
       </View>
     </View>

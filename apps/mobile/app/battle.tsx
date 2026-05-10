@@ -78,6 +78,7 @@ export default function BattleScreen() {
   const awardXp = useGameStore((s) => s.awardXp);
   const addItem = useGameStore((s) => s.addItem);
   const addGold = useGameStore((s) => s.addGold);
+  const claimBar = useGameStore((s) => s.claimBar);
 
   const player = demo.state.combatants.find((c) => c.kind === 'player')!;
   const aliveEnemy = demo.state.combatants.find(
@@ -167,13 +168,16 @@ export default function BattleScreen() {
 
   const onContinue = useCallback(() => {
     if (result === 'win') {
-      router.push('/rewards');
+      router.push({
+        pathname: '/rewards',
+        params: { barId: params.barId ?? '', theme: barTheme, label: barLabel },
+      });
     } else {
       router.back();
     }
-  }, [result]);
+  }, [result, params.barId, barTheme, barLabel]);
 
-  // Reward minting on victory (XP + gold + loot drop).
+  // Reward minting on victory (XP + gold + loot drop + bar claim).
   useEffect(() => {
     if (result === 'win') {
       const t = setTimeout(() => {
@@ -186,11 +190,14 @@ export default function BattleScreen() {
           itemIdGen: () => `it-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         });
         addItem(item);
+        if (params.barId) {
+          claimBar({ barId: params.barId, theme: barTheme, label: barLabel });
+        }
       }, 100);
       return () => clearTimeout(t);
     }
     return undefined;
-  }, [result, demo.classId, awardXp, addGold, addItem]);
+  }, [result, demo.classId, awardXp, addGold, addItem, claimBar, params.barId, barTheme, barLabel]);
 
   // Time-since-hit drives the screen vignette overlay.
   const playerFlashActive = Date.now() - playerHitAt < 280;

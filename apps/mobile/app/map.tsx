@@ -6,15 +6,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
+import { getClass } from '@barbrawl/game-core';
 import { Tilemap } from '@/components/Tilemap';
 import { PlayerSprite, type Direction } from '@/components/PlayerSprite';
 import { DPad } from '@/components/DPad';
 import { Panel } from '@/components/Panel';
 import { PixelText } from '@/components/PixelText';
 import { UI } from '@/design/palette';
+import { PIXEL } from '@/design/scale';
 import {
   OVERWORLD_MAP, TILES, tileAt, TILE_LOGICAL, MAP_COLS, MAP_ROWS,
 } from '@/design/tiles';
+import { useGameStore } from '@/state/game-store';
 
 const SPAWN_COL = 5;
 const SPAWN_ROW = 7;
@@ -31,6 +34,11 @@ export default function MapScreen() {
   const [row, setRow] = useState(SPAWN_ROW);
   const [dir, setDir] = useState<Direction>('down');
   const [step, setStep] = useState(0);
+  const claimedBars = useGameStore((s) => s.claimedBars);
+  const claimedById = useMemo(
+    () => Object.fromEntries(claimedBars.map((b) => [b.barId, b])),
+    [claimedBars],
+  );
 
   // What door (if any) is the player standing on or adjacent to?
   const adjacentDoor: DoorTile = useMemo(() => {
@@ -124,14 +132,33 @@ export default function MapScreen() {
 
       {/* Door prompt */}
       <View style={{ paddingHorizontal: 12, marginBottom: 8 }}>
-        {adjacentDoor ? (
-          <Panel>
-            <PixelText size={12} color={UI.cursor}>▶ {adjacentDoor.label}</PixelText>
-            <PixelText size={10} color={UI.textDim} style={{ marginTop: 4 }}>
-              Tap A or press ENTER to challenge.
-            </PixelText>
-          </Panel>
-        ) : (
+        {adjacentDoor ? (() => {
+          const claim = adjacentDoor.barId ? claimedById[adjacentDoor.barId] : undefined;
+          const defenderCls = claim?.defenderClassId ? getClass(claim.defenderClassId) : null;
+          return (
+            <Panel
+              style={claim ? { borderColor: UI.cursor, borderWidth: PIXEL } : undefined}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <PixelText size={12} color={UI.cursor}>▶ {adjacentDoor.label}</PixelText>
+                {claim ? (
+                  <PixelText size={9} color={UI.hpFull}>YOURS</PixelText>
+                ) : null}
+              </View>
+              {claim ? (
+                <PixelText size={10} color={UI.text} style={{ marginTop: 4 }}>
+                  {defenderCls
+                    ? `Defender: ${defenderCls.name}`
+                    : 'Undefended — tap A to station a fighter.'}
+                </PixelText>
+              ) : (
+                <PixelText size={10} color={UI.textDim} style={{ marginTop: 4 }}>
+                  Tap A or press ENTER to challenge.
+                </PixelText>
+              )}
+            </Panel>
+          );
+        })() : (
           <Panel>
             <PixelText size={11} color={UI.textDim}>
               Walk to a building — bars are doors with neon trim.

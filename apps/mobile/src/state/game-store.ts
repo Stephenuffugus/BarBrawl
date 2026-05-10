@@ -18,6 +18,19 @@ type CharacterRow = NewCharacterRow;
 /** Per-character equipped slot map. Stores item IDs that resolve via inventory[]. */
 export type EquippedSlots = Partial<Record<Loot.ItemSlot, string>>;
 
+/** A bar claimed by the player after a victory. */
+export interface ClaimedBar {
+  barId: string;
+  theme: string;
+  label: string;
+  /** Class id of the stationed defender, or null if undefended. */
+  defenderClassId: ClassId | null;
+  /** When the bar was first claimed (ms epoch). */
+  claimedAtMs: number;
+  /** When the current defender was stationed. */
+  stationedAtMs: number | null;
+}
+
 export interface GameState {
   userId: string;
   gold: number;
@@ -26,9 +39,11 @@ export interface GameState {
   activeIdx: number;
   /** equipped[classId][slot] → itemId. */
   equipped: Record<string, EquippedSlots>;
+  claimedBars: ClaimedBar[];
 
   // selectors
   active: () => CharacterRow;
+  defenderForBar: (barId: string) => ClaimedBar | undefined;
 
   // actions
   setActive: (idx: number) => void;
@@ -38,6 +53,9 @@ export interface GameState {
   addGold: (g: number) => void;
   equipItem: (classId: ClassId, item: Loot.Item) => void;
   unequipSlot: (classId: ClassId, slot: Loot.ItemSlot) => void;
+  claimBar: (bar: { barId: string; theme: string; label: string }) => void;
+  stationDefender: (barId: string, classId: ClassId) => void;
+  unstationDefender: (barId: string) => void;
   resetDemo: () => void;
 }
 
@@ -61,8 +79,10 @@ export const useGameStore = create<GameState>()(
       roster: freshRoster(),
       activeIdx: 1, // default to Bouncer (index 1)
       equipped: {},
+      claimedBars: [],
 
       active: () => get().roster[get().activeIdx]!,
+      defenderForBar: (barId) => get().claimedBars.find((b) => b.barId === barId),
 
       setActive: (idx) => {
         const max = get().roster.length;
@@ -120,8 +140,44 @@ export const useGameStore = create<GameState>()(
         });
       },
 
+      claimBar: (bar) => {
+        set((s) => {
+          if (s.claimedBars.some((b) => b.barId === bar.barId)) return s;
+          const claim: ClaimedBar = {
+            barId: bar.barId,
+            theme: bar.theme,
+            label: bar.label,
+            defenderClassId: null,
+            claimedAtMs: Date.now(),
+            stationedAtMs: null,
+          };
+          return { claimedBars: [...s.claimedBars, claim] };
+        });
+      },
+
+      stationDefender: (barId, classId) => {
+        set((s) => ({
+          claimedBars: s.claimedBars.map((b) => {
+            // Pull the defender off any other bar (one defender per char).
+            if (b.defenderClassId === classId && b.barId !== barId) {
+              return { ...b, defenderClassId: null, stationedAtMs: null };
+            }
+            if (b.barId !== barId) return b;
+            return { ...b, defenderClassId: classId, stationedAtMs: Date.now() };
+          }),
+        }));
+      },
+
+      unstationDefender: (barId) => {
+        set((s) => ({
+          claimedBars: s.claimedBars.map((b) =>
+            b.barId === barId ? { ...b, defenderClassId: null, stationedAtMs: null } : b,
+          ),
+        }));
+      },
+
       resetDemo: () => {
-        set({ gold: 250, inventory: [], roster: freshRoster(), activeIdx: 1, equipped: {} });
+        set({ gold: 250, inventory: [], roster: freshRoster(), activeIdx: 1, equipped: {}, claimedBars: [] });
       },
     }),
     {
@@ -136,6 +192,7 @@ export const useGameStore = create<GameState>()(
         roster: s.roster,
         activeIdx: s.activeIdx,
         equipped: s.equipped,
+        claimedBars: s.claimedBars,
       }),
     },
   ),
