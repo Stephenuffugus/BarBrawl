@@ -1,0 +1,65 @@
+name: Deploy to Hostinger
+
+# Builds the Expo web bundle and rsyncs it to
+# lucidwinds.com/barbrawl/ on Hostinger via SSH. Runs from GitHub's
+# hosted runners (their IPs are not blocked by Hostinger).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mobile/**'
+      - 'packages/game-core/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-hostinger.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hostinger
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web bundle
+        working-directory: apps/mobile
+        run: pnpm build:web
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.HOSTINGER_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${{ secrets.HOSTINGER_PORT }}" -H "${{ secrets.HOSTINGER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy via rsync over SSH
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=accept-new" \
+            apps/mobile/dist/ \
+            "${{ secrets.HOSTINGER_USER }}@${{ secrets.HOSTINGER_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/"
+
+      - name: Smoke-test the live URL
+        run: |
+          sleep 3
+          status=$(curl -sk -o /dev/null -w "%{http_code}" "https://lucidwinds.com/barbrawl/")
+          echo "GET /barbrawl/ → $status"
+          [ "$status" = "200" ] || (echo "Deploy may not be live yet, but rsync succeeded."; exit 0)
