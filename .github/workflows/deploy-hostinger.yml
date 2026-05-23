@@ -47,6 +47,12 @@ jobs:
       - name: Copy web/.htaccess into dist
         run: cp apps/mobile/web/.htaccess apps/mobile/dist/.htaccess
 
+      - name: Disable Jekyll on GitHub Pages
+        # GitHub Pages defaults to Jekyll, which silently drops any folder
+        # whose name starts with an underscore. Our Expo bundle lives in
+        # `_expo/`, so without this marker the JS 404s.
+        run: touch apps/mobile/dist/.nojekyll
+
       - name: Force-push dist to deploy branch
         env:
           DIST: apps/mobile/dist
