@@ -1,6 +1,8 @@
 // Skill tree viewer. D2-style: 3 trees per class, prereq lines, glowing
-// allocated nodes. Demo holds allocation state in local component state;
-// real version persists to Supabase via edge function.
+// allocated nodes. Allocations persist via the Zustand store
+// (`allocateNode` in game-store), which stamps `allocated_nodes` onto the
+// matching roster row. Server-authoritative path will sync these via an
+// edge function in the networked build.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ScrollView, View, Pressable } from 'react-native';

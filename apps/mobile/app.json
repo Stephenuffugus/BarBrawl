@@ -48,13 +48,7 @@
           "locationAlwaysAndWhenInUsePermission": "BarBrawl uses your location to verify bar challenges and to notify you of defender activity."
         }
       ],
-      "expo-secure-store",
-      [
-        "@rnmapbox/maps",
-        {
-          "RNMapboxMapsDownloadToken": "sk.REPLACE_WITH_DOWNLOAD_SCOPED_TOKEN"
-        }
-      ]
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

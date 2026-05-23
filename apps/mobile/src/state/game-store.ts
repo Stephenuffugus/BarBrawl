@@ -85,6 +85,8 @@ export interface GameState {
     log: { turn: number; actorId: string; kind: string; text: string }[];
     finishedAtMs: number;
   } | null;
+  /** False until the first-run controls overlay has been dismissed. */
+  tutorialSeen: boolean;
   /** Bars the player has nominated. Demo-only — real flow goes to Supabase. */
   nominations: {
     id: string;
@@ -143,6 +145,8 @@ export interface GameState {
   applyBattleToQuests: (summary: BattleSummary) => void;
   claimDailyQuest: (questId: string) => boolean;
   toggleMuted: () => void;
+  /** Mark the first-run controls overlay as seen so it stops appearing. */
+  markTutorialSeen: () => void;
   resetDemo: () => void;
   /** Dev cheat — give the active char a fixed level + clear allocations. */
   devSetActiveLevel: (level: number) => void;
@@ -197,6 +201,7 @@ export const useGameStore = create<GameState>()(
       barClears: {},
       lastBattle: null,
       nominations: [],
+      tutorialSeen: false,
 
       active: () => get().roster[get().activeIdx]!,
       defenderForBar: (barId) => get().claimedBars.find((b) => b.barId === barId),
@@ -495,6 +500,10 @@ export const useGameStore = create<GameState>()(
 
       toggleMuted: () => {
         set((s) => ({ audioMuted: !s.audioMuted }));
+      },
+
+      markTutorialSeen: () => {
+        set({ tutorialSeen: true });
       },
 
       registerLogin: () => {

@@ -21,7 +21,7 @@ function isWorldBossActive(now: Date = new Date()): boolean {
 }
 
 export default function Title() {
-  const { audioMuted, toggleMuted, crawlPassXp, loginStreak } = useGameStore();
+  const { audioMuted, toggleMuted, crawlPassXp, loginStreak, tutorialSeen, markTutorialSeen } = useGameStore();
   const cp = progressIntoTier(crawlPassXp);
   const cpPct = cp.tier >= CRAWL_PASS_RULES.TIER_COUNT
     ? 1
@@ -190,6 +190,62 @@ export default function Title() {
       >
         <PixelText size={16} color={UI.text}>FIGHT (DEMO)</PixelText>
       </Pressable>
+
+      {/* First-run controls overlay — dismiss to begin. */}
+      {!tutorialSeen ? (
+        <View style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(7,7,12,0.94)',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          zIndex: 100,
+        }}>
+          <View style={{
+            borderColor: UI.cursor,
+            borderWidth: PIXEL,
+            backgroundColor: UI.panelFill,
+            padding: 20,
+            maxWidth: 340,
+            width: '100%',
+          }}>
+            <PixelText size={16} color={UI.cursor} style={{ textAlign: 'center', marginBottom: 14 }}>
+              HOW TO PLAY
+            </PixelText>
+            <PixelText size={11} color={UI.text} style={{ marginBottom: 8 }}>
+              ▸ WALK THE STREETS to find bars. D-pad moves your fighter; step onto a bar door to enter.
+            </PixelText>
+            <PixelText size={11} color={UI.text} style={{ marginBottom: 8 }}>
+              ▸ Inside, clear three rooms and beat the boss to claim the bar.
+            </PixelText>
+            <PixelText size={11} color={UI.text} style={{ marginBottom: 8 }}>
+              ▸ In battle, pick FIGHT/SKILL/ITEM/RUN, then tap the rhythm bar on the green mark for crits.
+            </PixelText>
+            <PixelText size={11} color={UI.text} style={{ marginBottom: 8 }}>
+              ▸ Each level grants 1 skill point. Spend in SKILL TREES.
+            </PixelText>
+            <PixelText size={11} color={UI.text} style={{ marginBottom: 14 }}>
+              ▸ Claimed bars produce coins — collect from TERRITORY. Station a defender so rivals don&apos;t steal them back.
+            </PixelText>
+            <PixelText size={9} color={UI.textDim} style={{ marginBottom: 14, textAlign: 'center' }}>
+              Progress saves in your browser.
+            </PixelText>
+            <Pressable
+              onPress={markTutorialSeen}
+              style={{
+                paddingVertical: 12,
+                borderColor: UI.cursor,
+                borderWidth: PIXEL,
+                alignItems: 'center',
+                backgroundColor: UI.bg,
+              }}
+            >
+              <PixelText size={14} color={UI.cursor}>GOT IT ▸</PixelText>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
 
       {/* Crawl Pass progress strip */}
       <View style={{ marginTop: 28, alignItems: 'center', width: 240 }}>

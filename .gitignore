@@ -25,6 +25,8 @@ build/
 *.aab
 *.ipa
 *.xcarchive
+# Web bundle artifacts ship via GitHub releases, not git history.
+*.zip
 
 # OS / IDE
 .DS_Store

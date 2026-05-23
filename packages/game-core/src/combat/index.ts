@@ -19,14 +19,22 @@
 //     turn_start, crit_landed, action_taken, perfect_rhythm, dodge,
 //     overheal, damage_taken. Tempo decays 1/turn for Duelist.
 //
+// Also wired:
+//   - Passive effects: `foldPassives(actor.allocatedNodes, ctx)` runs in
+//     turn.ts (attack actor + target), status.ts (effective-stats), and
+//     keystone-hooks.ts. The 146 non-active nodes are mapped to
+//     structured `PassiveEffect` entries in passive-effects.ts and folded
+//     into hit-time stat modifiers.
+//   - Consumable effects: spec §5.8 catalog resolved in consumables/.
+//   - Gating marks: resistance marks + VIP keys checked in gating/.
+//
 // Still display-only / TODO:
-//   - Consumable effects.
-//   - Resistance/damage-type interaction with Metroid gating marks.
-//   - Passive effects from notable/small/passive-keystone nodes (the
-//     allocated_nodes array is read but not yet interpreted for stat
-//     modifiers).
-//   - Some status approximations (slow → debuff_def, blind → mark) will
-//     get their own tags once the full StatusEffect taxonomy stabilizes.
+//   - A handful of status approximations (slow → debuff_def, blind →
+//     mark) will get their own tags once the full StatusEffect taxonomy
+//     stabilizes.
+//   - 5 shallow mechanics (see docs/STATUS.md "shallow spots"): Hexwright
+//     Reserve stack scaling, Ghost SPD buff tag, Medic consumable-slot
+//     expansion, time-scaling passives, coin-flip keystone 2x/0x.
 
 export * from './types';
 export { initBattle, scaleEnemyStats, playerCombatant, enemyCombatant,
