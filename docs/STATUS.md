@@ -5,23 +5,56 @@
 
 ## Playtest deploy (live URL)
 
-`https://lucidwinds.com/barbrawl/` — hosted on the user's existing
-Hostinger Business plan as a subfolder under lucidwinds.com (subdomain
-was abandoned mid-setup due to Hostinger nav friction). Auto-deploy:
+**Live now:** https://stephenuffugus.github.io/BarBrawl/
+
+GitHub Pages serves from the `deploy` branch. Pipeline:
 
 1. Push to `main` (changes under `apps/mobile/**`, `packages/game-core/**`,
-   or the workflow itself).
+   `pnpm-lock.yaml`, or the workflow itself).
 2. `.github/workflows/deploy-hostinger.yml` runs on a GitHub runner:
-   builds the Expo web bundle with `baseUrl=/barbrawl`, then orphan-
-   commits + force-pushes `apps/mobile/dist/` to the `deploy` branch.
-3. The deploy-branch push fires the GitHub webhook configured to
-   Hostinger's pull URL.
-4. Hostinger's built-in GIT integration pulls the deploy branch into
-   `public_html/barbrawl/`.
+   builds the Expo web bundle with `baseUrl=/BarBrawl`, copies
+   `apps/mobile/web/.htaccess` into dist, touches `.nojekyll`, then
+   orphan-commits + force-pushes `apps/mobile/dist/` to the `deploy`
+   branch.
+3. GitHub Pages auto-publishes the new `deploy` commit (~30-90 sec).
 
-No SSH from this codespace (Hostinger blocks the codespace IP). No
-secrets to manage — uses GITHUB_TOKEN to push and Hostinger's webhook
-auth on its end.
+Why this stack:
+- Codespace can't reach Hostinger (their firewall drops our outbound IP).
+- Hostinger Git pull worked but mis-located files; spent ~6h on path
+  fights and gave up. The `apps/mobile/web/.htaccess` is kept in tree
+  in case the Hostinger path gets revisited.
+- GitHub Pages is free, no secrets to manage, repo had to be flipped
+  to PUBLIC for free-plan Pages (was private).
+- The workflow name still says "deploy-hostinger" — leave it, the file
+  is the live deploy pipeline regardless of where it ships.
+
+Why `.nojekyll`: GitHub Pages defaults to Jekyll, which silently drops
+folders starting with `_`. The Expo bundle lives in `_expo/`, so the
+JS 404s without that marker.
+
+`https://lucidwinds.com/barbrawl/` was the original target but
+abandoned — Hostinger never pulled into a path that matched what
+Apache serves. Possible follow-up: Cloudflare redirect from
+`lucidwinds.com/barbrawl/*` → the github.io URL, or fix the Hostinger
+Git install path with the leading-slash convention the Lucid Winds
+deploy uses (`/public_html/barbrawl`).
+
+## Playtest feedback (2026-05-23, first hands-on)
+
+User loaded the live URL and surfaced two real issues:
+
+1. **Rhythm bar isn't visibly tappable.** The whole `<Pressable>`
+   wraps the meter but reads as decoration. The "TAP IN THE GOLD"
+   caption is too quiet. Tracked as task 8 — needs button affordance.
+2. **Tile-grid map is wrong direction.** Spec calls for a real-world
+   map with GPS + nearby bars (location-based RPG). User has working
+   Leaflet + CartoDB Voyager in Lucid Winds — port that pattern here.
+   Tracked as task 9.
+
+## Plan of attack
+
+See [docs/PLAN_OF_ATTACK.md](./PLAN_OF_ATTACK.md) — phased build-out
+from demo to shippable. Foundation → Backend → Polish → Distribution.
 
 ## Where we are
 
