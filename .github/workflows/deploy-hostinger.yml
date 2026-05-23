@@ -42,12 +42,19 @@ jobs:
         run: pnpm build:web
 
       - name: Set up SSH key
+        env:
+          SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          SSH_HOST: ${{ secrets.HOSTINGER_HOST }}
+          SSH_PORT: ${{ secrets.HOSTINGER_PORT }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          echo "${{ secrets.HOSTINGER_SSH_KEY }}" > ~/.ssh/deploy_key
+          # Preserve newlines from the multi-line secret.
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${{ secrets.HOSTINGER_PORT }}" -H "${{ secrets.HOSTINGER_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          # Quick sanity check the key parses (won't print the key itself).
+          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null && echo "key parses OK"
+          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: Deploy via rsync over SSH
         run: |
