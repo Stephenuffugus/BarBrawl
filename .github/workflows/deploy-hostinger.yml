@@ -41,25 +41,24 @@ jobs:
         working-directory: apps/mobile
         run: pnpm build:web
 
-      - name: Set up SSH key
+      - name: Install sshpass
+        run: sudo apt-get update -qq && sudo apt-get install -y sshpass
+
+      - name: Prime known_hosts
         env:
-          SSH_KEY_B64: ${{ secrets.HOSTINGER_SSH_KEY }}
           SSH_HOST: ${{ secrets.HOSTINGER_HOST }}
           SSH_PORT: ${{ secrets.HOSTINGER_PORT }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          # The secret is base64-encoded so newlines survive chat → clipboard
-          # → GitHub UI paste. Decode here to the on-disk PEM.
-          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null && echo "key parses OK"
           ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Deploy via rsync over SSH
+      - name: Deploy via rsync over SSH (password auth)
+        env:
+          SSHPASS: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
         run: |
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/deploy_key -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=accept-new" \
+          sshpass -e rsync -avz --delete \
+            -e "ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=accept-new" \
             apps/mobile/dist/ \
             "${{ secrets.HOSTINGER_USER }}@${{ secrets.HOSTINGER_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/"
 
