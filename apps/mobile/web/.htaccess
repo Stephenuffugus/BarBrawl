@@ -21,7 +21,7 @@
 # ---- SPA fallback ------------------------------------------------------
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteBase /barbrawl/
+  RewriteBase /BarBrawl/
 
   # Don't rewrite real files or directories.
   RewriteCond %{REQUEST_FILENAME} -f [OR]
