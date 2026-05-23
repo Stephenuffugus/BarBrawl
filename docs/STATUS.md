@@ -3,6 +3,26 @@
 > **Read this first when resuming work on BarBrawl.** It's the shortest
 > path from "what state is the repo in?" to "what should I do next?".
 
+## Playtest deploy (live URL)
+
+`https://lucidwinds.com/barbrawl/` — hosted on the user's existing
+Hostinger Business plan as a subfolder under lucidwinds.com (subdomain
+was abandoned mid-setup due to Hostinger nav friction). Auto-deploy:
+
+1. Push to `main` (changes under `apps/mobile/**`, `packages/game-core/**`,
+   or the workflow itself).
+2. `.github/workflows/deploy-hostinger.yml` runs on a GitHub runner:
+   builds the Expo web bundle with `baseUrl=/barbrawl`, then orphan-
+   commits + force-pushes `apps/mobile/dist/` to the `deploy` branch.
+3. The deploy-branch push fires the GitHub webhook configured to
+   Hostinger's pull URL.
+4. Hostinger's built-in GIT integration pulls the deploy branch into
+   `public_html/barbrawl/`.
+
+No SSH from this codespace (Hostinger blocks the codespace IP). No
+secrets to manage — uses GITHUB_TOKEN to push and Hostinger's webhook
+auth on its end.
+
 ## Where we are
 
 **Mobile demo runs end-to-end on web with deep mechanics surfaced.**
@@ -284,6 +304,7 @@ These move the project forward and don't depend on the native/web
 decision. Recommended starting point when resuming.
 
 1. **Extract a `packages/game-core`** package with:
+
    - All content constants (classes, trees, bars, rooms,
      consumables) typed properly — ported from
      `docs/prototype/barbrawl-v6.jsx`
