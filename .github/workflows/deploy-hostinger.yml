@@ -44,6 +44,9 @@ jobs:
         working-directory: apps/mobile
         run: pnpm build:web
 
+      - name: Copy web/.htaccess into dist
+        run: cp apps/mobile/web/.htaccess apps/mobile/dist/.htaccess
+
       - name: Force-push dist to deploy branch
         env:
           DIST: apps/mobile/dist
@@ -61,7 +64,8 @@ jobs:
           cd "$DIST"
           git init -q -b deploy
           git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
-          git add -A
+          # Force-add the .htaccess even if it's covered by some upstream gitignore.
+          git add -Af .
           git commit -q -m "Deploy from main@$SOURCE_SHA"
           git push -f origin deploy
 
