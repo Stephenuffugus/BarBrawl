@@ -1,8 +1,9 @@
-name: Deploy to Hostinger
+name: Build and publish deploy branch
 
-# Builds the Expo web bundle and rsyncs it to
-# lucidwinds.com/barbrawl/ on Hostinger via SSH. Runs from GitHub's
-# hosted runners (their IPs are not blocked by Hostinger).
+# Builds the Expo web bundle and force-pushes ONLY the built files to a
+# `deploy` branch. Hostinger's built-in GIT integration pulls from that
+# branch into the lucidwinds.com/barbrawl/ folder. No SSH, no passwords,
+# no per-environment secrets needed — Hostinger authenticates itself.
 
 on:
   push:
@@ -15,11 +16,14 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-hostinger
+  group: publish-deploy-branch
   cancel-in-progress: false
 
+permissions:
+  contents: write   # needed to push the `deploy` branch
+
 jobs:
-  build-and-deploy:
+  build-and-publish:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -27,7 +31,6 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        # Version comes from packageManager in package.json.
 
       - uses: actions/setup-node@v4
         with:
@@ -41,30 +44,27 @@ jobs:
         working-directory: apps/mobile
         run: pnpm build:web
 
-      - name: Install sshpass
-        run: sudo apt-get update -qq && sudo apt-get install -y sshpass
-
-      - name: Prime known_hosts
+      - name: Force-push dist to deploy branch
         env:
-          SSH_HOST: ${{ secrets.HOSTINGER_HOST }}
-          SSH_PORT: ${{ secrets.HOSTINGER_PORT }}
+          DIST: apps/mobile/dist
+          SOURCE_SHA: ${{ github.sha }}
         run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # Configure git identity for the orphan commit.
+          git config --global user.name "barbrawl-deploy-bot"
+          git config --global user.email "deploy@barbrawl"
 
-      - name: Deploy via rsync over SSH (password auth)
-        env:
-          SSHPASS: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
-        run: |
-          sshpass -e rsync -avz --delete \
-            -e "ssh -p ${{ secrets.HOSTINGER_PORT }} -o StrictHostKeyChecking=accept-new" \
-            apps/mobile/dist/ \
-            "${{ secrets.HOSTINGER_USER }}@${{ secrets.HOSTINGER_HOST }}:${{ secrets.HOSTINGER_DEPLOY_PATH }}/"
+          # Stamp the build with the source commit it came from so a
+          # human inspecting the deploy branch can trace it back.
+          echo "Built from main@$SOURCE_SHA at $(date -u +%FT%TZ)" > "$DIST/.build-info"
 
-      - name: Smoke-test the live URL
+          # Create an orphan branch (no history) so deploy branch stays small.
+          cd "$DIST"
+          git init -q -b deploy
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git add -A
+          git commit -q -m "Deploy from main@$SOURCE_SHA"
+          git push -f origin deploy
+
+      - name: Summary
         run: |
-          sleep 3
-          status=$(curl -sk -o /dev/null -w "%{http_code}" "https://lucidwinds.com/barbrawl/")
-          echo "GET /barbrawl/ → $status"
-          [ "$status" = "200" ] || (echo "Deploy may not be live yet, but rsync succeeded."; exit 0)
+          echo "::notice::Deploy branch updated. In Hostinger hPanel → Advanced → GIT, click Deploy to pull this branch into public_html/barbrawl/."
