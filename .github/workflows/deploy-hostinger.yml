@@ -43,16 +43,16 @@ jobs:
 
       - name: Set up SSH key
         env:
-          SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          SSH_KEY_B64: ${{ secrets.HOSTINGER_SSH_KEY }}
           SSH_HOST: ${{ secrets.HOSTINGER_HOST }}
           SSH_PORT: ${{ secrets.HOSTINGER_PORT }}
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          # Preserve newlines from the multi-line secret.
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          # The secret is base64-encoded so newlines survive chat → clipboard
+          # → GitHub UI paste. Decode here to the on-disk PEM.
+          echo "$SSH_KEY_B64" | base64 -d > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          # Quick sanity check the key parses (won't print the key itself).
           ssh-keygen -y -f ~/.ssh/deploy_key > /dev/null && echo "key parses OK"
           ssh-keyscan -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
