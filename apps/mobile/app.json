@@ -8,6 +8,11 @@
     "scheme": "barbrawl",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "web": {
+      "name": "Wild Wardens",
+      "shortName": "Wild Wardens",
+      "favicon": "./assets/icon.png"
+    },
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "cover",

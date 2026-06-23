@@ -73,6 +73,25 @@ jobs:
           # human inspecting the deploy branch can trace it back.
           echo "Built from main@$SOURCE_SHA at $(date -u +%FT%TZ)" > "$DIST/.build-info"
 
+          # Carry forward the PREVIOUS deploy's JS bundle. GitHub Pages caches
+          # index.html for ~10 min and ignores our .htaccess, so right after a
+          # deploy a visitor can hold a stale index.html that points at the old
+          # (hashed) bundle. If we wiped that bundle, the app can't boot and the
+          # page goes dead until the HTML cache expires. By keeping the single
+          # previous bundle alive, the stale HTML still loads (old version) and
+          # self-heals once the cache refreshes. Bounded to 2 generations so the
+          # branch stays small.
+          if git fetch --depth=1 origin deploy 2>/dev/null; then
+            PREV_BUNDLE=$(git show FETCH_HEAD:index.html 2>/dev/null \
+              | grep -oE '_expo/static/js/web/[^"]+\.js' | head -1 || true)
+            if [ -n "$PREV_BUNDLE" ] && [ ! -f "$DIST/$PREV_BUNDLE" ]; then
+              mkdir -p "$DIST/$(dirname "$PREV_BUNDLE")"
+              git show "FETCH_HEAD:$PREV_BUNDLE" > "$DIST/$PREV_BUNDLE" 2>/dev/null \
+                && echo "Carried forward previous bundle: $PREV_BUNDLE" \
+                || rm -f "$DIST/$PREV_BUNDLE"
+            fi
+          fi
+
           # Create an orphan branch (no history) so deploy branch stays small.
           cd "$DIST"
           git init -q -b deploy

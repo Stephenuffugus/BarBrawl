@@ -13,6 +13,11 @@ export default function RootLayout() {
 
   useEffect(() => { setSfxMuted(audioMuted); }, [audioMuted]);
 
+  // Web tab title (guarantees it regardless of the static HTML template).
+  useEffect(() => {
+    if (typeof document !== 'undefined') document.title = 'Wild Wardens';
+  }, []);
+
   // On app boot, register the day's login + roll today's quests.
   useEffect(() => {
     registerLogin();
