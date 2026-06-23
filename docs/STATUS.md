@@ -3,60 +3,77 @@
 > **Read this first when resuming work on BarBrawl.** It's the shortest
 > path from "what state is the repo in?" to "what should I do next?".
 
-## ⚡ 2026-06-23 session — THEME PIVOT + feel/balance pass
+## ▶ WHEN THE USER SAYS "LET'S GET STARTED" (next session)
 
-Big direction change this session. Read this before anything else.
+The game is **"Wild Wardens"** (caretaker/nature theme), live and
+playable at https://stephenuffugus.github.io/BarBrawl/ . The user wants
+to **dive straight into building more** — don't re-audit, don't re-ask
+settled decisions. Confirm nothing; pick up at the plan below.
 
-**1. Theme pivot: dropping bars/alcohol/brawl ENTIRELY → caretaker /
-nature-guardian.** The combat engine is going to be reused inside the
-user's family-friendly game Lucid Winds, so the bar skin is out. New
-frame: real places are overgrown/wild, you *tame* them (not fight) and
-become their *keeper*. See memory `feedback_drop_alcohol_theme_entirely`.
-Engine (game-core math) is unchanged — internal keys (`dive`/`pub`/…,
-class ids `brewer`/`gambler`, item ids) stay STABLE; only display
-strings reskinned.
+**Default first move (unless the user names something else):**
+1. **Real nearby venues on the map** — replace the demo offset markers in
+   `apps/mobile/app/map.web.tsx` / `src/design/places.ts` with live
+   OpenStreetMap **Overpass** results (parks/gardens/pubs near the GPS
+   fix), so it's a true location game. Keep the demo fallback for when
+   Overpass is empty/offline. This is the biggest "real game" leap.
 
-Reskinned this session (core loop is coherent end-to-end):
-- Venues: dive→Wild Meadow, pub→Cottage Garden, sports→Community Park,
-  cocktail→Rose Garden, wine→Old Orchard, brewery→Greenhouse,
-  nightclub→Moonlit Grove (`preview.tsx` THEME_LABEL/FLAVOR/BOSS_TITLE,
-  `tiles.ts` door labels).
-- Enemies + bosses (`apps/mobile/src/battle/setup.ts`).
-- Dungeon rooms (`packages/game-core/src/bars/rooms.ts`).
-- Loot item names — all 26 bases (`packages/game-core/src/loot/bases.ts`).
-- Combat verbs: FIGHT→CALM, VICTORY→TAMED, DEFEATED→DRIVEN BACK,
-  RUN→FLEE; rewards/claim copy → caretaker voice.
-- 2 class names: Bouncer→Bulwark, Gambler→Forager.
-- Title: "BAR BRAWL" → placeholder **"WILD WARDENS"** (NAME NOT FINAL —
-  needs user sign-off).
+**Then, in rough priority (each is independent, ship-as-you-go):**
+2. **Combat feel tuning** from playtest — timing-window width, damage
+   numbers, signature hand-authored patterns for marquee skills.
+   (Combat input model is DONE: per-attack tap combos, see below.)
+3. **Safe-area pass on remaining screens** — title is fixed; proactively
+   add `useSafeAreaInsets().bottom` padding to other bottom-anchored
+   screens (battle/dungeon DPad, rewards, replay, defender, territory)
+   so no control sits under the phone bar. SafeAreaProvider is already
+   wired in `app/_layout.tsx`; web also runtime-injects
+   `viewport-fit=cover` + `100dvh`.
+4. **Finish de-barring the leftover strings** — Forager skill trees were
+   reskinned, but re-scan title copy ("NOMINATE A BAR", "FIGHT (DEMO)",
+   HOW-TO-PLAY mentions FIGHT/SKILL/ITEM/RUN), and any palette polish.
+5. **Art drop-in** — when the user brings Midjourney/ChatGPT art, wire it
+   via `docs/ART_SPEC.md` + `src/components/ImageSprite.tsx` +
+   `src/design/spriteAssets.ts` (drop PNGs in `apps/mobile/assets/sprites/`).
+6. **Pre-existing HMAC replay bug** — fix before any real backend launch.
 
-**Still alcohol/bar-coded (NOT yet done):** Gambler/Forager's 3 skill
-trees are gambling-themed (Dice/Cards/House, "Snake Eyes", "All In");
-some anointments ("Last Call", "House Bones", "Dealer's Grace"); the
-GBC palettes are neon-barlight (gardens want green/floral); gating
-terms ("VIP key"); secondary screens (defender/territory/inventory)
-still say "defender"/"bar"; docs (this file, GAME_OVERVIEW) still
-describe bars. Repo/package name `barbrawl` is fine as a codename.
+**How to ship + verify (this pipeline is proven this session):**
+- Edit → `cd apps/mobile && pnpm typecheck && pnpm lint`;
+  `cd packages/game-core && pnpm test` (expect 416/417 — the 1 failure is
+  the known HMAC bug, ignore it).
+- For UI/feel changes, verify headless before deploy: `npx expo export -p
+  web`, serve `dist` under a `/BarBrawl/` path with `python3 -m
+  http.server`, drive it with Playwright at a 360×720 viewport (Chromium +
+  `sudo npx playwright install-deps chromium` already installed). Navigate
+  IN-APP (don't deep-link the local server — no SPA fallback locally).
+- Deploy: `git push origin main` → watch
+  `gh run watch <id>` → site republishes ~1 min. Tell the user to load
+  with a fresh `?v=N` token (Pages caches HTML ~10 min).
 
-**2. Feel fix (responsiveness).** Tap-to-next-action latency cut from
-~800ms to ~270ms: `RhythmBar` HOLD_MS 450→150, battle post-action
-freeze 350→120 (×3), `RHYTHM_WINDOW_MS` 1200→1000. All marked
-`// BALANCE:`.
+## What shipped 2026-06-23 (this session)
 
-**3. Balance.** User chose "bump player damage" over nerfing enemy HP:
-`bootstrap.ts` ATK/level gain *2→*3 (`// BALANCE:`). Note: this helps
-mid/late game more than the level-5 demo start — boss HP (init.ts) was
-left intact per the user's choice. Revisit if the early game still
-feels bloated.
+- **Theme pivot bars→caretaker "Wild Wardens"** (name approved). Engine
+  math + all stable ids unchanged; only display strings/colors reskinned.
+  Venues (dive=Wild Meadow … nightclub=Moonlit Grove), enemies, bosses,
+  rooms, loot, Forager (ex-Gambler) trees de-gambled, anointments, gating
+  terms, consumables, events, battle-log voice, all screen copy, garden
+  palettes, sprites. Combat verbs: SOOTHE/TAMED/etc.
+- **Combat input redesign: per-attack tap combos** (`src/components/
+  ComboBar.tsx` + `src/battle/patterns.ts`). The command button is the
+  attack; each plays a timed beat sequence (basic=1, multi_hit=N e.g.
+  Flurry=3, heavy=1 slow wide beat). Nail beats=full dmg, fumble=partial
+  but still lands. Big TAP button + spacebar. Aggregates to one
+  RhythmQuality so the engine is unchanged. Replaced the old single slider.
+- **Balance** (`combat/init.ts`, `character/bootstrap.ts`, `math/rhythm.ts`,
+  all `// BALANCE:`): boss HP ~halved (150+14/lvl), enemy ATK up so fights
+  are SHORT and LOSABLE; player ATK +50%/lvl; rhythm window 1000ms;
+  latency ~800→~270ms. Verified: Bramble King fight won in ~9 rounds with
+  clean play; sloppy play bleeds you out.
+- **Deploy hardened**: `404.html` SPA fallback (Pages ignores `.htaccess`),
+  previous-bundle carry-forward (stale HTML won't go dead), web tab title
+  "Wild Wardens", `viewport-fit=cover`+`100dvh`. Live URL works incl. the
+  Leaflet map (`app/map.web.tsx`, web-only; native keeps the tile grid).
 
-**4. Found a real bug (pre-existing, NOT mine):** the HMAC
-replay-protection test in `security-hmac.test.ts` fails on clean `main`
-— replay protection may not actually work. Out of scope this session;
-flag for the security/backend pass.
-
-All green after changes: `game-core` 407/408 (only the pre-existing
-HMAC failure), mobile typecheck + lint clean. Changes are on `main`,
-NOT deployed — run the deploy pipeline to see them live.
+**Still bar-coded / open:** see priorities 3–6 above. The pre-existing
+HMAC replay test fails on clean `main` (not ours).
 
 ## Playtest deploy (live URL)
 
