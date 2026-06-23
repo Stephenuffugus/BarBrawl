@@ -22,8 +22,11 @@ export function scaleEnemyStats(
   const atkMod = opts.atkMod ?? 1.0;
   const defMod = opts.defMod ?? 1.0;
   const effectiveLevel = Math.max(1, playerLevel - 2 + (opts.levelJitter ?? 0));
-  const hp  = Math.floor((isBoss ? 300 : 60) + effectiveLevel * (isBoss ? 35 : 12));
-  const atk = Math.floor((isBoss ? 14 : 6) + effectiveLevel * (isBoss ? 1.2 : 0.7) * atkMod);
+  // BALANCE (playtest 2026-06-23): the first boss was a sponge AND unloseable.
+  // Boss HP roughly halved (shorter fights) and enemy ATK raised sharply so a
+  // sloppy fight can actually kill you. DEF unchanged.
+  const hp  = Math.floor((isBoss ? 150 : 45) + effectiveLevel * (isBoss ? 14 : 9));
+  const atk = Math.floor((isBoss ? 16 : 7) + effectiveLevel * (isBoss ? 2.5 : 1.0) * atkMod);
   const def = Math.floor((isBoss ? 8 : 4) + effectiveLevel * (isBoss ? 0.5 : 0.3) * defMod);
   return {
     hp,

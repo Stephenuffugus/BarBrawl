@@ -18,7 +18,8 @@ import { PixelText } from '@/components/PixelText';
 import { PixelGrid } from '@/components/PixelGrid';
 import { HpBar } from '@/components/HpBar';
 import { MenuList, type MenuItem } from '@/components/MenuList';
-import { RhythmBar } from '@/components/RhythmBar';
+import { ComboBar } from '@/components/ComboBar';
+import { patternForBasic, patternForSkill } from '@/battle/patterns';
 import { SkillPanel } from '@/components/SkillPanel';
 import { ShakeFlash } from '@/components/ShakeFlash';
 import { VictoryFlash } from '@/components/VictoryFlash';
@@ -617,12 +618,15 @@ export default function BattleScreen() {
             />
           ) : phase === 'swapping' ? (
             <SwapPanel reserves={swappableReserves} onPick={onSwap} onCancel={onCancelSwap} />
-          ) : phase === 'awaiting-rhythm' ? (
+          ) : phase === 'awaiting-rhythm' && pending ? (
             <Panel style={{ minHeight: 132, alignItems: 'center', justifyContent: 'center' }}>
-              <RhythmBar
-                width={220}
+              <ComboBar
+                width={250}
+                pattern={pending.kind === 'skill' && pending.skillNodeId
+                  ? patternForSkill(pending.skillNodeId)
+                  : patternForBasic()}
                 onResolve={onRhythmResolved}
-                caption={pending?.kind === 'skill' ? 'SKILL — TIME YOUR TOUCH' : 'SOOTHE — TIME YOUR TOUCH'}
+                caption={pending.kind === 'skill' ? 'SKILL — TAP THE COMBO' : 'SOOTHE — TAP THE BEAT'}
               />
             </Panel>
           ) : (
