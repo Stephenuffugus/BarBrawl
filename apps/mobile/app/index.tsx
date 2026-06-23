@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Events } from '@barbrawl/game-core';
 import { UI } from '@/design/palette';
@@ -27,17 +28,10 @@ export default function Title() {
     ? 1
     : cp.xpIntoTier / CRAWL_PASS_RULES.XP_PER_TIER;
   const wbActive = isWorldBossActive();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: UI.bg,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}
-    >
+    <View style={{ flex: 1, backgroundColor: UI.bg }}>
       {/* World boss alert ribbon */}
       {wbActive ? (
         <View style={{
@@ -86,6 +80,19 @@ export default function Title() {
           {audioMuted ? 'MUTED' : '♪ ON'}
         </PixelText>
       </Pressable>
+
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 24,
+          paddingTop: insets.top + 64,
+          paddingBottom: insets.bottom + 28,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
       {/* GBC-style logo block */}
       <View style={{ alignItems: 'center', marginBottom: 56 }}>
         {/* NAME TBD — placeholder rebrand from "BAR BRAWL". Redline freely. */}
@@ -272,6 +279,7 @@ export default function Title() {
           {cp.xpIntoTier.toLocaleString()} / {CRAWL_PASS_RULES.XP_PER_TIER.toLocaleString()} XP
         </PixelText>
       </View>
+      </ScrollView>
     </View>
   );
 }
