@@ -1,8 +1,9 @@
 import { makeTree } from './tree-factory';
 import type { Tree } from '../types';
 
-// Bouncer — "Brewer" (DB id). Tree DB keys kept as hops/barley/foam for
-// schema stability. Display names: Impact / Bulwark / Intimidate.
+// Brewer — class id "brewer", display "The Bulwark" (sturdy as old oak).
+// Tree DB keys kept as hops/barley/foam for schema stability.
+// Display names: Impact / Bulwark / Intimidate.
 //
 // Porting source: v6 prototype TREES.hops / .barley / .foam. Effects preserved
 // verbatim. Node names and flavor text reworked away from beer/brewing metaphor.
@@ -16,7 +17,7 @@ export const hopsTree: Tree = makeTree('ho', [
   ['Sledgehammer',     'Active: 200% ATK + bleed 3 turns', 'Fight-ender. Takes you with it.'],
   ['Rolling Thunder',  'Active skills -10% cooldown',      'Hit after hit.'],
   ['Deep Bruise',      'Bleed DoT +50% dmg',               'The mark lasts days.'],
-  ['BROKEN BOTTLE',    'KEYSTONE: All hits apply Bleed. -20% DEF.', "When it's on, everything cuts."],
+  ['BRIAR THORN',      'KEYSTONE: All hits apply Bleed. -20% DEF.', 'Once it takes hold, every touch snags.'],
 ]);
 
 export const barleyTree: Tree = makeTree('ba', [

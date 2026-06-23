@@ -17,7 +17,7 @@
 
 import type { RhythmQuality } from './damage';
 
-export const RHYTHM_WINDOW_MS = 1200;
+export const RHYTHM_WINDOW_MS = 1000; // BALANCE: snappier marker (was 1200)
 
 export const RHYTHM_ZONES = Object.freeze({
   /** Perfect (gold) zone — hit anywhere here for 2.0x damage. */

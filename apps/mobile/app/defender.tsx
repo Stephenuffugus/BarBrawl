@@ -36,7 +36,7 @@ export default function DefenderScreen() {
         <Pressable onPress={() => router.back()}>
           <PixelText size={12} color={UI.cursor}>◀ BACK</PixelText>
         </Pressable>
-        <PixelText size={14} color={UI.text}>STATION A DEFENDER</PixelText>
+        <PixelText size={14} color={UI.text}>STATION A CARETAKER</PixelText>
         <View style={{ width: 60 }} />
       </View>
 
@@ -49,8 +49,8 @@ export default function DefenderScreen() {
 
       <Panel style={{ marginHorizontal: 12, marginBottom: 8 }}>
         <PixelText size={10} color={UI.textDim}>
-          Defenders earn coins + XP while you sleep, and fight back when others
-          challenge this bar. One defender per character.
+          Caretakers earn coins + XP while you sleep, and keep this place calm
+          when others come to test it. One caretaker per character.
         </PixelText>
       </Panel>
 

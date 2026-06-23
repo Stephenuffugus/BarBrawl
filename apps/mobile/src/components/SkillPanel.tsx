@@ -39,19 +39,33 @@ export function SkillPanel({ player, equipped, onPick, onCancel }: SkillPanelPro
           <Pressable
             key={nodeId}
             onPress={() => { if (!onCooldown) onPick(nodeId); }}
-            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}
+            style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 4 }}
           >
             <PixelText size={14} color={onCooldown ? 'transparent' : UI.cursor} style={{ width: 16 }}>
               ▶
             </PixelText>
-            <PixelText size={13} color={onCooldown ? UI.textDim : UI.text}>
-              {label}
-            </PixelText>
-            {onCooldown ? (
-              <PixelText size={10} color={UI.hpHalf} style={{ marginLeft: 8 }}>
-                CD {cd}
-              </PixelText>
-            ) : null}
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <PixelText size={13} color={onCooldown ? UI.textDim : UI.text}>
+                  {label}
+                </PixelText>
+                {onCooldown ? (
+                  <PixelText size={10} color={UI.hpHalf} style={{ marginLeft: 8 }}>
+                    CD {cd}
+                  </PixelText>
+                ) : null}
+              </View>
+              {def?.effect ? (
+                <PixelText size={9} color={onCooldown ? UI.textDim : UI.cursor} style={{ marginTop: 1 }}>
+                  {def.effect}
+                </PixelText>
+              ) : null}
+              {def?.desc ? (
+                <PixelText size={8} color={UI.textDim} style={{ marginTop: 1 }}>
+                  {def.desc}
+                </PixelText>
+              ) : null}
+            </View>
           </Pressable>
         );
       })}

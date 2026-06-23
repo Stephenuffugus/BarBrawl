@@ -70,7 +70,7 @@ export function VictoryFlash({ active }: VictoryFlashProps) {
         alignItems: 'center',
       }}>
         <PixelText size={42} color={UI.cursor} style={{ letterSpacing: 6 }}>
-          VICTORY
+          TAMED
         </PixelText>
       </View>
       <View style={{

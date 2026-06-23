@@ -42,25 +42,25 @@ export interface TileDef {
 
 export const TILES: Readonly<Record<TileId, TileDef>> = {
   grass:    { fill: '#1d402a', accent: '#0a1a14', passable: true },
-  street:   { fill: '#28282e', accent: '#1a1a20', passable: true },
-  sidewalk: { fill: '#5a5a64', accent: '#3a3a44', passable: true },
-  wall:     { fill: '#2a1810', accent: '#1a0e08', passable: false },
+  street:   { fill: '#3a3228', accent: '#241e16', passable: true },  // garden path / packed earth
+  sidewalk: { fill: '#7a6a4c', accent: '#4e4330', passable: true },  // gravel walk
+  wall:     { fill: '#26341c', accent: '#141d0e', passable: false }, // hedge wall
 
-  bar_dive:      { fill: '#3d2510', accent: '#a06028', passable: false },
-  bar_pub:       { fill: '#1d402a', accent: '#5da870', passable: false },
-  bar_nightclub: { fill: '#400860', accent: '#e000a0', passable: false },
-  bar_brewery:   { fill: '#403018', accent: '#c89048', passable: false },
+  bar_dive:      { fill: '#2e4a22', accent: '#7bbf52', passable: false }, // Wild Meadow thicket
+  bar_pub:       { fill: '#1d402a', accent: '#8fd27a', passable: false }, // Cottage Garden
+  bar_nightclub: { fill: '#241846', accent: '#7c5ad8', passable: false }, // Moonlit Grove canopy
+  bar_brewery:   { fill: '#1e3a30', accent: '#5fd0a0', passable: false }, // Greenhouse glass
 
-  door_dive:      { fill: '#a06028', accent: '#f8c878', passable: true,
-                    kind: 'door', barId: 'b-rusty-nail',     label: "The Rusty Nail",     theme: 'dive', tier: 1 },
-  door_pub:       { fill: '#5da870', accent: '#c8f0a0', passable: true,
-                    kind: 'door', barId: 'b-greens',         label: "Green's Pub",        theme: 'pub',  tier: 3 },
-  door_nightclub: { fill: '#e000a0', accent: '#f870f0', passable: true,
-                    kind: 'door', barId: 'b-mission-blackout', label: 'Mission Blackout', theme: 'nightclub', tier: 5 },
-  door_brewery:   { fill: '#c89048', accent: '#f8e0a0', passable: true,
-                    kind: 'door', barId: 'b-hop-yard',       label: 'Hop Yard Brewery',   theme: 'brewery', tier: 4 },
+  door_dive:      { fill: '#7bbf52', accent: '#d8f0a8', passable: true,
+                    kind: 'door', barId: 'b-rusty-nail',     label: "The Tangled Lot",    theme: 'dive', tier: 1 },
+  door_pub:       { fill: '#8fd27a', accent: '#d8f0b8', passable: true,
+                    kind: 'door', barId: 'b-greens',         label: "Foxglove Cottage",   theme: 'pub',  tier: 3 },
+  door_nightclub: { fill: '#7c5ad8', accent: '#c0a8f8', passable: true,
+                    kind: 'door', barId: 'b-mission-blackout', label: 'Moonlit Grove',    theme: 'nightclub', tier: 5 },
+  door_brewery:   { fill: '#5fd0a0', accent: '#c0f0dc', passable: true,
+                    kind: 'door', barId: 'b-hop-yard',       label: 'The Old Greenhouse', theme: 'brewery', tier: 4 },
 
-  sign: { fill: '#403028', accent: '#c89048', passable: false },
+  sign: { fill: '#3a4028', accent: '#9fbf5a', passable: false }, // garden trellis marker
 };
 
 /** Tilemap layout. 'G' grass, '.' street, ',' sidewalk, '#' wall.

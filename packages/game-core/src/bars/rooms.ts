@@ -18,57 +18,64 @@ export interface RoomDef {
 }
 
 export const ROOMS_BY_TYPE: Readonly<Record<BarType, readonly RoomDef[]>> = Object.freeze({
+  // dive = Wild Meadow (keys are stable engine IDs; only names/icons reskinned)
   dive: [
-    { name: 'Sticky Floor',     modifier: 'Enemies -10% SPD',         enemies: 1, icon: '🍺' },
-    { name: 'Dart Corner',      modifier: '+15% crit for everyone',    enemies: 2, icon: '🎯' },
-    { name: 'Pool Table',       modifier: 'Random knockback',          enemies: 2, icon: '🎱' },
-    { name: 'Bathroom Brawl',   modifier: 'Tight space, +20% dmg all', enemies: 1, icon: '🚽' },
-    { name: 'Back Alley',       modifier: 'Surprise attack advantage', enemies: 3, icon: '🗑️' },
-    { name: 'Boss: Main Bar',   modifier: 'All-out final fight',       enemies: 0, isBoss: true, icon: '💀' },
+    { name: 'Tangled Roots',    modifier: 'Enemies -10% SPD',         enemies: 1, icon: '🌱' },
+    { name: 'Sunlit Clearing',  modifier: '+15% crit for everyone',    enemies: 2, icon: '☀️' },
+    { name: 'Tumbleweed Patch', modifier: 'Random knockback',          enemies: 2, icon: '🌾' },
+    { name: 'Thorn Thicket',    modifier: 'Tight space, +20% dmg all', enemies: 1, icon: '🌿' },
+    { name: 'Hidden Hollow',    modifier: 'Surprise advantage',        enemies: 3, icon: '🍄' },
+    { name: 'Heart of the Meadow', modifier: 'The wild makes its stand', enemies: 0, isBoss: true, icon: '🌻' },
   ],
+  // pub = Cottage Garden
   pub: [
-    { name: 'Snug',             modifier: 'Cramped, +15% dmg',         enemies: 1, icon: '🪑' },
-    { name: 'Fireplace',        modifier: 'Warm buffs, +10% HP',       enemies: 2, icon: '🔥' },
-    { name: 'Dart Board',       modifier: 'Precision zone, +20% crit', enemies: 2, icon: '🎯' },
-    { name: 'Trad Music Corner',modifier: 'Rhythm-based bonus',        enemies: 2, icon: '🎻' },
-    { name: 'Boss: The Bar',    modifier: 'Showdown at the bar',       enemies: 0, isBoss: true, icon: '💀' },
+    { name: 'Herb Bed',         modifier: 'Cramped, +15% dmg',         enemies: 1, icon: '🌿' },
+    { name: 'Sunny Patch',      modifier: 'Warm light, +10% HP',       enemies: 2, icon: '☀️' },
+    { name: 'Trellis Walk',     modifier: 'Precision zone, +20% crit', enemies: 2, icon: '🪴' },
+    { name: 'Wind Chimes',      modifier: 'Rhythm-based bonus',        enemies: 2, icon: '🎐' },
+    { name: 'The Old Hedge',    modifier: 'The hedge has its keeper',  enemies: 0, isBoss: true, icon: '🌳' },
   ],
+  // sports = Community Park
   sports: [
-    { name: 'TV Corner',        modifier: 'Distracted enemies -10% acc', enemies: 2, icon: '📺' },
-    { name: 'Wing Station',     modifier: 'Greasy floor, -5% SPD all',  enemies: 2, icon: '🍗' },
-    { name: 'Bar',              modifier: 'Crowded, AoE bonus',         enemies: 3, icon: '🍻' },
-    { name: 'Patio',            modifier: 'Open space, +10% SPD',       enemies: 2, icon: '☀️' },
-    { name: "Boss: Owner's Booth", modifier: 'Boss has entourage',      enemies: 0, isBoss: true, icon: '💀' },
+    { name: 'Picnic Lawn',      modifier: 'Distracted enemies -10% acc', enemies: 2, icon: '🧺' },
+    { name: 'Muddy Trail',      modifier: 'Slippery ground, -5% SPD all', enemies: 2, icon: '🥾' },
+    { name: 'Fountain Plaza',   modifier: 'Crowded, AoE bonus',         enemies: 3, icon: '⛲' },
+    { name: 'Open Green',       modifier: 'Open space, +10% SPD',       enemies: 2, icon: '🌳' },
+    { name: 'The Great Oak',    modifier: 'Guardian calls its saplings', enemies: 0, isBoss: true, icon: '🌳' },
   ],
+  // cocktail = Rose Garden
   cocktail: [
-    { name: 'Main Bar',         modifier: 'Status effects +1 turn',    enemies: 2, icon: '🍸' },
-    { name: 'Speakeasy Room',   modifier: 'Hidden bonuses random',     enemies: 2, icon: '🚪' },
-    { name: 'Tasting Corner',   modifier: 'Debuffs +25% effect',       enemies: 1, icon: '🥃' },
-    { name: 'VIP Booth',        modifier: 'Elite enemies, better loot', enemies: 2, icon: '💎' },
-    { name: 'Boss: The Lounge', modifier: 'Boss crafts drinks mid-fight', enemies: 0, isBoss: true, icon: '💀' },
+    { name: 'Rose Arbor',       modifier: 'Status effects +1 turn',    enemies: 2, icon: '🌹' },
+    { name: 'Secret Garden',    modifier: 'Hidden bonuses random',     enemies: 2, icon: '🌿' },
+    { name: 'Thorn Maze',       modifier: 'Debuffs +25% effect',       enemies: 1, icon: '🥀' },
+    { name: 'Royal Beds',       modifier: 'Elite enemies, better loot', enemies: 2, icon: '👑' },
+    { name: 'The Rose Court',   modifier: 'The garden grows mid-fight', enemies: 0, isBoss: true, icon: '🌹' },
   ],
+  // wine = Old Orchard
   wine: [
-    { name: 'Tasting Bar',      modifier: 'Slow turns, +20% skill dmg', enemies: 2, icon: '🍷' },
-    { name: 'Cellar',           modifier: 'Dark, -10% acc for all',     enemies: 2, icon: '🕯️' },
-    { name: 'Reserve Vault',    modifier: 'Buffs last +2 turns',        enemies: 1, icon: '🔐' },
-    { name: 'Boss: Grand Cellar', modifier: 'Aged boss, scales with turns', enemies: 0, isBoss: true, icon: '💀' },
+    { name: 'Blossom Row',      modifier: 'Slow turns, +20% skill dmg', enemies: 2, icon: '🌸' },
+    { name: 'Root Cellar',      modifier: 'Dark, -10% acc for all',     enemies: 2, icon: '🕯️' },
+    { name: 'Ancient Grove',    modifier: 'Buffs last +2 turns',        enemies: 1, icon: '🌳' },
+    { name: 'The Eldest Tree',  modifier: 'Aged guardian, scales with turns', enemies: 0, isBoss: true, icon: '🌳' },
   ],
+  // brewery = Greenhouse
   brewery: [
-    { name: 'Taproom',          modifier: 'Sample enemies, many regulars', enemies: 3, icon: '🍺' },
-    { name: 'Brewing Floor',    modifier: 'Hot + humid, -5% DEF all',   enemies: 2, icon: '🌡️' },
-    { name: 'Cold Storage',     modifier: 'Cold slows, +10% SPD for movers', enemies: 2, icon: '❄️' },
-    { name: 'Barrel Room',      modifier: 'Stacked barrels, cover',    enemies: 2, icon: '🛢️' },
-    { name: 'Bottling Line',    modifier: 'Conveyor moves all',        enemies: 2, icon: '⚙️' },
-    { name: "Boss: Brewmaster's Office", modifier: 'Boss + 2 senior brewers', enemies: 0, isBoss: true, icon: '💀' },
+    { name: 'Seedling Trays',   modifier: 'Many sprouts underfoot',     enemies: 3, icon: '🌱' },
+    { name: 'Humid Wing',       modifier: 'Hot + humid, -5% DEF all',   enemies: 2, icon: '💧' },
+    { name: 'Cooling Room',     modifier: 'Cold slows, +10% SPD for movers', enemies: 2, icon: '❄️' },
+    { name: 'Potting Benches',  modifier: 'Stacked pots, cover',        enemies: 2, icon: '🪴' },
+    { name: 'Watering Lines',   modifier: 'Irrigation moves all',       enemies: 2, icon: '🚿' },
+    { name: 'The Great Fern',   modifier: 'The greenhouse comes alive', enemies: 0, isBoss: true, icon: '🌿' },
   ],
+  // nightclub = Moonlit Grove
   nightclub: [
-    { name: 'Entry Line',       modifier: 'Bouncer enemies',           enemies: 2, icon: '🚪' },
-    { name: 'Dance Floor',      modifier: 'Strobe, random miss chance', enemies: 3, icon: '🪩' },
-    { name: 'Bar',              modifier: 'Loud, skills cost +1 turn', enemies: 2, icon: '🍾' },
-    { name: 'VIP Section',      modifier: 'High-level defenders',      enemies: 2, icon: '💎' },
-    { name: 'Bathroom Fight',   modifier: 'Tight, no dodge',           enemies: 1, icon: '🚽' },
-    { name: 'DJ Booth',         modifier: 'Bass waves, rhythm matters', enemies: 2, icon: '🎧' },
-    { name: 'Boss: DJ Booth Top', modifier: 'Boss drops beats (AoE)',  enemies: 0, isBoss: true, icon: '💀' },
+    { name: 'Mossy Gate',       modifier: 'Warden enemies',            enemies: 2, icon: '🌙' },
+    { name: 'Firefly Glade',    modifier: 'Flickering light, random miss', enemies: 3, icon: '✨' },
+    { name: 'Whispering Reeds', modifier: 'Loud rush, skills cost +1 turn', enemies: 2, icon: '🌾' },
+    { name: 'Sacred Pool',      modifier: 'High-level guardians',      enemies: 2, icon: '💧' },
+    { name: 'Bramble Tunnel',   modifier: 'Tight, no dodge',           enemies: 1, icon: '🌿' },
+    { name: 'Heart Tree',       modifier: 'Pulsing sap, rhythm matters', enemies: 2, icon: '🌳' },
+    { name: 'The Grove Guardian', modifier: 'The grove answers its call (AoE)', enemies: 0, isBoss: true, icon: '🌳' },
   ],
 });
 

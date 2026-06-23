@@ -1,11 +1,11 @@
 // Metroidvania gating model — design doc §3.
 //
 // Three orthogonal gate mechanisms:
-//   1. Resistance marks  — trinket/mark slot items that enable survival
-//      at Tier 4+ of a bar-theme's damage type.
-//   2. VIP keys          — consumable items that unlock a bar's sealed
-//      post-boss dungeon floor.
-//   3. Mastery tier gates — handled separately in spec §5.7 bar mastery.
+//   1. Wards            — trinket/ward slot items that enable survival
+//      at Tier 4+ of a habitat's wild element.
+//   2. Gate keys        — consumable items that open a habitat's hidden
+//      inner grove beyond its keeper trial.
+//   3. Mastery tier gates — handled separately in spec §5.7 habitat mastery.
 //
 // The resolver functions are pure. Combat/inventory state lives elsewhere;
 // game-core only describes the data and eligibility rules.
@@ -22,17 +22,17 @@ export type DamageType =
   | 'heat'
   | 'edged';
 
-// Bar themes map 1:1 to BarType from core types. DESIGN_V1.md §3.1 used
-// placeholder names (speakeasy, craft) that didn't match the DB schema;
+// Habitat themes map 1:1 to BarType from core types. DESIGN_V1.md §3.1 used
+// placeholder names that didn't match the DB schema;
 // this reconciles to the DB's 7 types, preserving design intent.
 export const BAR_THEME_DAMAGE: Readonly<Record<BarType, DamageType>> = Object.freeze({
-  dive: 'blunt',       // chairs, fists
-  pub: 'edged',        // darts, broken pint glass
-  sports: 'impact',    // thrown projectiles, pool balls
-  cocktail: 'toxic',   // concoction burns, DoT elixirs
-  wine: 'shadow',      // sommelier hexes, cellar curses
-  brewery: 'heat',     // fermenter blasts, kiln hazards
-  nightclub: 'sonic',  // strobe, bass wave, sound blasts
+  dive: 'blunt',       // Wild Meadow — tangled brambles, falling boughs
+  pub: 'edged',        // Cottage Garden — thorns, sharp hedge growth
+  sports: 'impact',    // Community Park — windfall, rolling stones
+  cocktail: 'toxic',   // Rose Garden — pollen haze, lingering sap
+  wine: 'shadow',      // Old Orchard — deep shade, blighted hollows
+  brewery: 'heat',     // Greenhouse — sun-glass swelter, steam vents
+  nightclub: 'sonic',  // Moonlit Grove — windsong, resonant night air
 });
 
 export interface ResistanceMark {
@@ -48,7 +48,7 @@ export interface VIPKey {
   id: string;
   name: string;
   forBarTheme: BarType;
-  /** Keys are consumed on use. */
+  /** Gate keys are consumed on use. */
   consumeOnUse: true;
   description: string;
 }

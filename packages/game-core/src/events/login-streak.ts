@@ -99,17 +99,17 @@ export function rewardsForStreak(streak: number): readonly LoginReward[] {
     reason: `Day ${streak} login bonus`,
   }];
   if (streak === 3) {
-    out.push({ kind: 'consumable', itemId: 'small_brew', amount: 1, reason: '3-day streak: Small Brew' });
+    out.push({ kind: 'consumable', itemId: 'small_brew', amount: 1, reason: '3-day streak: Soothing Salve' });
   }
   if (streak === 7) {
-    out.push({ kind: 'consumable', itemId: 'house_special', amount: 2, reason: '7-day streak: 2× House Special' });
+    out.push({ kind: 'consumable', itemId: 'house_special', amount: 2, reason: '7-day streak: 2× Garden Tonic' });
     out.push({ kind: 'respec_token', amount: 1, reason: '7-day streak: free respec token' });
   }
   if (streak === 14) {
-    out.push({ kind: 'consumable', itemId: 'focus_vial', amount: 1, reason: '14-day streak: Focus Vial' });
+    out.push({ kind: 'consumable', itemId: 'focus_vial', amount: 1, reason: '14-day streak: Clarity Tincture' });
   }
   if (streak === 30) {
-    out.push({ kind: 'consumable', itemId: 'emergency_elixir', amount: 1, reason: '30-day streak: Emergency Elixir' });
+    out.push({ kind: 'consumable', itemId: 'emergency_elixir', amount: 1, reason: '30-day streak: Reviving Seed' });
     out.push({ kind: 'respec_token', amount: 3, reason: '30-day streak: 3× respec tokens' });
     out.push({ kind: 'cosmetic', amount: 1, itemId: 'regular_title', reason: '30-day streak: "Regular" title' });
   }

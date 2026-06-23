@@ -88,7 +88,7 @@ export function toRuntime(
   const stats = overrides.stats ?? {
     hp: b.hp + gain * 6 + m.hp,
     maxHp: b.hp + gain * 6 + m.hp,
-    atk: b.atk + gain * 2 + m.atk,
+    atk: b.atk + gain * 3 + m.atk, // BALANCE: +50% ATK/level growth (was *2) — player power scales faster so fights shorten as you level (user chose "bump player damage" over nerfing enemy HP, 2026-06-23)
     def: b.def + gain * 1 + m.def,
     spd: b.spd + gain * 0.5,
     luck: b.luck,

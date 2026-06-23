@@ -3,6 +3,61 @@
 > **Read this first when resuming work on BarBrawl.** It's the shortest
 > path from "what state is the repo in?" to "what should I do next?".
 
+## ⚡ 2026-06-23 session — THEME PIVOT + feel/balance pass
+
+Big direction change this session. Read this before anything else.
+
+**1. Theme pivot: dropping bars/alcohol/brawl ENTIRELY → caretaker /
+nature-guardian.** The combat engine is going to be reused inside the
+user's family-friendly game Lucid Winds, so the bar skin is out. New
+frame: real places are overgrown/wild, you *tame* them (not fight) and
+become their *keeper*. See memory `feedback_drop_alcohol_theme_entirely`.
+Engine (game-core math) is unchanged — internal keys (`dive`/`pub`/…,
+class ids `brewer`/`gambler`, item ids) stay STABLE; only display
+strings reskinned.
+
+Reskinned this session (core loop is coherent end-to-end):
+- Venues: dive→Wild Meadow, pub→Cottage Garden, sports→Community Park,
+  cocktail→Rose Garden, wine→Old Orchard, brewery→Greenhouse,
+  nightclub→Moonlit Grove (`preview.tsx` THEME_LABEL/FLAVOR/BOSS_TITLE,
+  `tiles.ts` door labels).
+- Enemies + bosses (`apps/mobile/src/battle/setup.ts`).
+- Dungeon rooms (`packages/game-core/src/bars/rooms.ts`).
+- Loot item names — all 26 bases (`packages/game-core/src/loot/bases.ts`).
+- Combat verbs: FIGHT→CALM, VICTORY→TAMED, DEFEATED→DRIVEN BACK,
+  RUN→FLEE; rewards/claim copy → caretaker voice.
+- 2 class names: Bouncer→Bulwark, Gambler→Forager.
+- Title: "BAR BRAWL" → placeholder **"WILD WARDENS"** (NAME NOT FINAL —
+  needs user sign-off).
+
+**Still alcohol/bar-coded (NOT yet done):** Gambler/Forager's 3 skill
+trees are gambling-themed (Dice/Cards/House, "Snake Eyes", "All In");
+some anointments ("Last Call", "House Bones", "Dealer's Grace"); the
+GBC palettes are neon-barlight (gardens want green/floral); gating
+terms ("VIP key"); secondary screens (defender/territory/inventory)
+still say "defender"/"bar"; docs (this file, GAME_OVERVIEW) still
+describe bars. Repo/package name `barbrawl` is fine as a codename.
+
+**2. Feel fix (responsiveness).** Tap-to-next-action latency cut from
+~800ms to ~270ms: `RhythmBar` HOLD_MS 450→150, battle post-action
+freeze 350→120 (×3), `RHYTHM_WINDOW_MS` 1200→1000. All marked
+`// BALANCE:`.
+
+**3. Balance.** User chose "bump player damage" over nerfing enemy HP:
+`bootstrap.ts` ATK/level gain *2→*3 (`// BALANCE:`). Note: this helps
+mid/late game more than the level-5 demo start — boss HP (init.ts) was
+left intact per the user's choice. Revisit if the early game still
+feels bloated.
+
+**4. Found a real bug (pre-existing, NOT mine):** the HMAC
+replay-protection test in `security-hmac.test.ts` fails on clean `main`
+— replay protection may not actually work. Out of scope this session;
+flag for the security/backend pass.
+
+All green after changes: `game-core` 407/408 (only the pre-existing
+HMAC failure), mobile typecheck + lint clean. Changes are on `main`,
+NOT deployed — run the deploy pipeline to see them live.
+
 ## Playtest deploy (live URL)
 
 **Live now:** https://stephenuffugus.github.io/BarBrawl/

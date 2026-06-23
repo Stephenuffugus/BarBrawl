@@ -1,10 +1,10 @@
 // Consumable type model — spec §5.8.
 //
-// Consumables are packed before a bar run (up to 4) and used in-battle
+// Consumables are packed before a warding run (up to 4) and used in-battle
 // without ending a turn. Used consumables are consumed regardless of
 // battle outcome; unused ones return to stash.
 //
-// Per DESIGN_V1.md the drink flavor is kept on consumables as "inventory
+// Per DESIGN_V1.md the caretaker flavor is kept on consumables as "inventory
 // props." Names come straight from the spec.
 
 import type { Rarity } from '../loot/types';

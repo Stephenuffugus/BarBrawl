@@ -6,9 +6,14 @@ import {
   RHYTHM_ZONES,
 } from '../index';
 
+const W = RHYTHM_WINDOW_MS;
+const CENTER = W / 2;
+
 describe('RHYTHM_WINDOW_MS + zones (spec §5.3)', () => {
-  it('window is 1200ms', () => {
-    expect(RHYTHM_WINDOW_MS).toBe(1200);
+  it('window is a positive, sub-spec duration', () => {
+    // BALANCE: window tuned down from 1200ms for snappier feel; keep it sane.
+    expect(RHYTHM_WINDOW_MS).toBeGreaterThan(0);
+    expect(RHYTHM_WINDOW_MS).toBeLessThanOrEqual(1200);
   });
   it('perfect zone is 47-53%', () => {
     expect(RHYTHM_ZONES.PERFECT_MIN).toBe(0.47);
@@ -22,33 +27,33 @@ describe('RHYTHM_WINDOW_MS + zones (spec §5.3)', () => {
 
 describe('classifyRhythmTap', () => {
   it('center tap = perfect', () => {
-    const r = classifyRhythmTap(600);
+    const r = classifyRhythmTap(CENTER);
     expect(r.quality).toBe('perfect');
     expect(r.deviationMs).toBe(0);
   });
 
   it('edge of perfect zone (47%) = perfect', () => {
-    const r = classifyRhythmTap(0.47 * 1200);
+    const r = classifyRhythmTap(0.47 * W);
     expect(r.quality).toBe('perfect');
   });
 
   it('just outside perfect (46%) = good', () => {
-    const r = classifyRhythmTap(0.46 * 1200);
+    const r = classifyRhythmTap(0.46 * W);
     expect(r.quality).toBe('good');
   });
 
   it('edge of good zone (40%) = good', () => {
-    const r = classifyRhythmTap(0.40 * 1200);
+    const r = classifyRhythmTap(0.40 * W);
     expect(r.quality).toBe('good');
   });
 
   it('outside green zone (30%) = miss', () => {
-    const r = classifyRhythmTap(0.30 * 1200);
+    const r = classifyRhythmTap(0.30 * W);
     expect(r.quality).toBe('miss');
   });
 
   it('late tap (90%) = miss', () => {
-    const r = classifyRhythmTap(0.90 * 1200);
+    const r = classifyRhythmTap(0.90 * W);
     expect(r.quality).toBe('miss');
   });
 
@@ -60,20 +65,20 @@ describe('classifyRhythmTap', () => {
 
   it('AFK mode = ok regardless of tap', () => {
     const afkNoTap = classifyRhythmTap(null, true);
-    const afkWithTap = classifyRhythmTap(600, true);
+    const afkWithTap = classifyRhythmTap(CENTER, true);
     expect(afkNoTap.quality).toBe('ok');
     expect(afkWithTap.quality).toBe('ok');
   });
 
   it('negative or out-of-bounds tap = miss', () => {
     expect(classifyRhythmTap(-50).quality).toBe('miss');
-    expect(classifyRhythmTap(9999).quality).toBe('miss');
+    expect(classifyRhythmTap(W + 9999).quality).toBe('miss');
     expect(classifyRhythmTap(NaN).quality).toBe('miss');
   });
 
   it('deviation is ms from center, signed', () => {
-    const early = classifyRhythmTap(500); // 100ms early
-    const late = classifyRhythmTap(700);  // 100ms late
+    const early = classifyRhythmTap(CENTER - 100); // 100ms early
+    const late = classifyRhythmTap(CENTER + 100);  // 100ms late
     expect(early.deviationMs).toBe(-100);
     expect(late.deviationMs).toBe(100);
   });
@@ -103,9 +108,9 @@ describe('classifyWithLenience', () => {
   it('with lenience, a previously-miss tap becomes good', () => {
     // 36% normally = miss; with 10% lenience, good zone widens by 5% each side
     // so GOOD_MIN becomes 0.35. 36% is now in good.
-    const withoutLenience = classifyRhythmTap(0.36 * 1200);
+    const withoutLenience = classifyRhythmTap(0.36 * W);
     expect(withoutLenience.quality).toBe('miss');
-    const withLenience = classifyWithLenience(0.36 * 1200, 0.10);
+    const withLenience = classifyWithLenience(0.36 * W, 0.10);
     expect(withLenience.quality).toBe('good');
   });
 

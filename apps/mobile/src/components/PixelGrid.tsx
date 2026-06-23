@@ -3,6 +3,8 @@ import { View } from 'react-native';
 import { colorAt, type TilePalette, BAR_PALETTES, type BarThemeId } from '@/design/palette';
 import { PIXEL } from '@/design/scale';
 import type { PixelSprite } from '@/design/sprites';
+import { resolveSpriteAsset } from '@/design/spriteAssets';
+import { ImageSprite } from './ImageSprite';
 
 export interface PixelGridProps {
   sprite: PixelSprite;
@@ -13,6 +15,14 @@ export interface PixelGridProps {
   /** Override default PIXEL scale for this sprite (e.g. boss bigger). */
   pixelSize?: number;
   tint?: string; // optional flat tint overlay (e.g. for damage flash)
+  /**
+   * Optional art key. When a real image is registered for this key in
+   * `spriteAssets.ts`, the image is rendered instead of the procedural grid
+   * (at the same on-screen size). Omit it, or leave the key unregistered, to
+   * keep the placeholder. Existing call sites that don't pass this are
+   * unaffected.
+   */
+  spriteKey?: string;
 }
 
 /**
@@ -23,8 +33,9 @@ export interface PixelGridProps {
  * cells (don't render them at all) and group runs of the same color into
  * single wider Views to keep the React tree small.
  */
-export function PixelGrid({ sprite, theme = 'dive', accent = '#f8b800', pixelSize = PIXEL, tint }: PixelGridProps) {
+export function PixelGrid({ sprite, theme = 'dive', accent = '#f8b800', pixelSize = PIXEL, tint, spriteKey }: PixelGridProps) {
   const palette: TilePalette = BAR_PALETTES[theme];
+  const side = sprite.size * pixelSize;
 
   // Build run-length runs for each row to reduce React node count.
   const runs = useMemo(() => {
@@ -45,7 +56,23 @@ export function PixelGrid({ sprite, theme = 'dive', accent = '#f8b800', pixelSiz
     return result;
   }, [sprite, palette, accent]);
 
-  const side = sprite.size * pixelSize;
+  // Prefer registered drop-in art when it exists. The image is rendered into
+  // the same logical box the placeholder grid would occupy (size × pixelSize),
+  // so swapping art in never shifts layout. Falls through to the grid otherwise.
+  if (resolveSpriteAsset(spriteKey)) {
+    return (
+      <View style={{ width: side, height: side, position: 'relative' }}>
+        <ImageSprite spriteKey={spriteKey!} size={side} />
+        {tint ? (
+          <View style={{
+            position: 'absolute', left: 0, top: 0, width: side, height: side,
+            backgroundColor: tint, opacity: 0.5,
+          }} />
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <View style={{ width: side, height: side, position: 'relative' }}>
       {runs.map((r, i) => (

@@ -4,8 +4,8 @@
 //   "."  transparent
 //   "K"  outline / pure black
 //   "@"  class accent — substituted by caller per Combatant
-//   "0..3"  bar-theme tile palette (background dressing only)
-//   "T,S,s,L,H,h,C,c"  body sprite slots (skin/hair/cloth)
+//   "0..3"  nature-theme tile palette (background dressing only)
+//   "T,S,s,L,H,h,C,c"  body sprite slots (stem/leaf/petal/bark)
 //
 // These are crude prototypes. Real art replaces them with the same shape
 // + better detail. Using inline strings means no asset pipeline yet.
@@ -30,9 +30,10 @@ function pack(art: string, size: number): PixelSprite {
   return { size, rows };
 }
 
-/* ─── 32x32 enemy sprite — Drunken Patron ──────────────────────────
- * A hunched figure in cloth, holding a bottle. PS-style chunk with
- * outline pass. Placeholder for real art. */
+/* ─── 32x32 critter sprite — Bramble Sprite ────────────────────────
+ * A small overgrown bramble-tangle with a wary leafy face. A wild
+ * thing waiting to be soothed. PS-style chunk with outline pass.
+ * Placeholder for real art. */
 export const DRUNKEN_PATRON = pack(`
 ................................
 ................................
@@ -68,8 +69,9 @@ export const DRUNKEN_PATRON = pack(`
 ...........KKKKK................
 `, 32);
 
-/* ─── 32x32 enemy sprite — Bar Patron ──────────────────────────────
- * Standing humanoid silhouette, generic tier-1 enemy. */
+/* ─── 32x32 critter sprite — Petal Sprite ──────────────────────────
+ * Standing leaf-and-petal woodland critter, the generic tier-1 wild
+ * thing the warden coaxes back to calm. */
 export const BAR_PATRON = pack(`
 ................................
 ................................
@@ -105,8 +107,9 @@ export const BAR_PATRON = pack(`
 ................................
 `, 32);
 
-/* ─── 48x48 boss sprite — Bouncer Boss (placeholder for "the owner") ──
- * Bigger, broader, intimidating silhouette. Placeholder. */
+/* ─── 48x48 boss sprite — Guardian Tree (the grove's keeper) ─────────
+ * A towering ancient tree-guardian, broad of trunk and crowned with
+ * canopy. The wild heart of a place the warden must soothe. Placeholder. */
 export const BAR_BOSS = pack(`
 ................................................
 ................................................

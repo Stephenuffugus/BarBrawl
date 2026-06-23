@@ -12,14 +12,14 @@ const operator: readonly AnointmentDef[] = [
   {
     id: 'op_focus_gen_on_crit',
     classId: 'steady',
-    name: 'Sniper\'s Drift',
+    name: 'Quiet Vigil',
     effectText: 'Crits generate +2 Focus instead of +1.',
     nodeRef: 'fo_5', // Laser Focus
   },
   {
     id: 'op_analyze_spread',
     classId: 'steady',
-    name: 'Cold Analysis',
+    name: 'Reading the Glade',
     effectText: 'Analyze also marks all enemies in the same room.',
     nodeRef: 'fo_7', // Analyze
   },
@@ -36,14 +36,14 @@ const bouncer: readonly AnointmentDef[] = [
   {
     id: 'bo_grit_low_hp',
     classId: 'brewer',
-    name: 'Last Call',
+    name: 'Last Stand of the Grove',
     effectText: 'Grit generation +50% while HP < 30%.',
     nodeRef: 'ba_8', // Cornered
   },
   {
     id: 'bo_bleed_spread',
     classId: 'brewer',
-    name: 'Broken Bottle Shards',
+    name: 'Scattering Thorns',
     effectText: 'Bleed DoTs spread to the next enemy hit.',
     nodeRef: 'ho_9', // BROKEN BOTTLE keystone
   },
@@ -60,7 +60,7 @@ const hexwright: readonly AnointmentDef[] = [
   {
     id: 'hx_curse_crit_detonate',
     classId: 'vintner',
-    name: 'Scarring Hex',
+    name: 'Bursting Bloom',
     effectText: 'Crits on cursed enemies detonate one stack for 2x.',
     nodeRef: 'tn_8', // Harbinger
   },
@@ -74,7 +74,7 @@ const hexwright: readonly AnointmentDef[] = [
   {
     id: 'hx_heal_on_curse',
     classId: 'vintner',
-    name: 'Shared Wound',
+    name: 'Shared Roots',
     effectText: 'Applying a curse heals you 2% max HP.',
     nodeRef: 'ar_5', // Renewed Will
   },
@@ -84,7 +84,7 @@ const duelist: readonly AnointmentDef[] = [
   {
     id: 'du_tempo_cap',
     classId: 'shaker',
-    name: 'Open Bout',
+    name: 'Open Glade',
     effectText: 'Tempo cap raised from 5 to 8.',
     nodeRef: 'st_8', // Stored Intent
   },
@@ -98,7 +98,7 @@ const duelist: readonly AnointmentDef[] = [
   {
     id: 'du_feint_swap',
     classId: 'shaker',
-    name: 'Two-Step',
+    name: 'Windswept Step',
     effectText: 'Fake-Out also swaps cooldowns of your 3 skills.',
     nodeRef: 'gn_3', // Fake-Out
   },
@@ -108,7 +108,7 @@ const medic: readonly AnointmentDef[] = [
   {
     id: 'me_reserve_to_atk',
     classId: 'orchardist',
-    name: 'Dark Practice',
+    name: 'Deep Roots',
     effectText: 'Reserve converts to +1 ATK per 5 HP stored.',
     nodeRef: 'or_8', // Constant Care
   },
@@ -156,21 +156,21 @@ const gambler: readonly AnointmentDef[] = [
   {
     id: 'ga_allin_double',
     classId: 'gambler',
-    name: 'House Bones',
+    name: 'Full Harvest',
     effectText: 'All-In win bonus increased from 2x to 3x.',
     nodeRef: 'di_6', // All In
   },
   {
     id: 'ga_perfect_chain_free',
     classId: 'gambler',
-    name: 'Dealer\'s Grace',
+    name: 'Forager\'s Grace',
     effectText: 'Missed rhythm does not reset your chain.',
     nodeRef: 'ca_5', // Blackjack
   },
   {
     id: 'ga_luck_crit_scale',
     classId: 'gambler',
-    name: 'Loaded Edge',
+    name: 'Lucky Sprig',
     effectText: 'Crit chance gains +1% per point of LUCK over 20.',
     nodeRef: 'hu_5', // Stacked Odds
   },

@@ -49,9 +49,9 @@ export default function ReplayScreen() {
           <View style={{ width: 60 }} />
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <PixelText size={11} color={UI.textDim}>No battle to replay yet.</PixelText>
+          <PixelText size={11} color={UI.textDim}>No encounter to replay yet.</PixelText>
           <PixelText size={9} color={UI.textDim} style={{ marginTop: 8 }}>
-            Win or lose a fight to populate this.
+            Tame or fail to soothe a place to populate this.
           </PixelText>
         </View>
       </View>
@@ -86,7 +86,7 @@ export default function ReplayScreen() {
         <Pressable onPress={() => router.back()}>
           <PixelText size={12} color={UI.cursor}>◀ BACK</PixelText>
         </Pressable>
-        <PixelText size={14} color={UI.text}>BATTLE REPLAY</PixelText>
+        <PixelText size={14} color={UI.text}>ENCOUNTER REPLAY</PixelText>
         <PixelText size={11} color={UI.textDim}>
           {cursor + 1}/{lastBattle.log.length}
         </PixelText>
@@ -145,7 +145,7 @@ export default function ReplayScreen() {
         ))}
         {atEnd ? (
           <View style={{ marginTop: 12, alignItems: 'center' }}>
-            <PixelText size={14} color={UI.cursor}>★ END OF FIGHT ★</PixelText>
+            <PixelText size={14} color={UI.cursor}>★ END OF ENCOUNTER ★</PixelText>
           </View>
         ) : null}
       </ScrollView>

@@ -97,7 +97,7 @@ export function initBattle(opts: InitBattleOptions): BattleState {
     combatants,
     log: [
       { turn: 1, actorId: 'system', kind: 'info',
-        text: `Battle ${opts.battleId} begins. ${enemies.length} enem${enemies.length === 1 ? 'y' : 'ies'}.` },
+        text: `${opts.battleId} stirs awake. ${enemies.length} restless one${enemies.length === 1 ? '' : 's'} to soothe.` },
     ],
     rewards: { xp: 0, gold: 0, itemIds: [] },
   };

@@ -48,9 +48,11 @@ export const SKILL_ACTIONS: Readonly<Record<string, SkillAction>> = Object.freez
 
   // ─── HEXWRIGHT / Wither (vintage) ─────────────────────────────────
   vn_3: { kind: 'charge', chargeTurns: 1, releaseMultiplier: 1.5, cooldown: 3 },  // Gather Will
-  vn_6: { kind: 'attack', multiplier: 2.5, cooldown: 6 },                    // Unleash (Hoarded Power release)
-  // ^ "Unleash all Hoarded Power" — conservative 2.5x base; real version
-  //   scales with stored Hoarded Power stacks (not yet implemented).
+  vn_6: { kind: 'attack', multiplier: 2.5, cooldown: 6,
+    consumeCharges: true, chargeScalingPerStack: 1.5 },                     // Unleash (Hoarded Power release)
+  // ^ "Unleash all Hoarded Power" — 2.5x base PLUS +1.5x per banked charge
+  //   ("Hoarded Power") stack, consuming every stored charge on release.
+  //   BALANCE: 1.5x/stack mirrors Gather Will's 1.5x release multiplier.
 
   // ─── HEXWRIGHT / Echo (aeration) ──────────────────────────────────
   ar_3: { kind: 'heal', healPct: 0.3, cleanse: true, cooldown: 4 },         // Unburden
@@ -111,10 +113,8 @@ export const SKILL_ACTIONS: Readonly<Record<string, SkillAction>> = Object.freez
   // ─── GHOST / Blur (sativa) ────────────────────────────────────────
   sa_3: { kind: 'buff', buffs: [
     { tag: 'buff_crit', turns: 2, magnitude: 100 },
-    { tag: 'dodge_up', turns: 2, magnitude: 50 },
-  ], cooldown: 4 },  // Adrenaline
-  // ^ "+100% SPD/crit 2 turns" — SPD buff not yet a status tag; substituting
-  //   dodge_up 50% as a SPD proxy. BALANCE: revisit when SPD has a status tag.
+    { tag: 'buff_spd', turns: 2, magnitude: 100 },
+  ], cooldown: 4 },  // Quickening — "+100% SPD/crit 2 turns" via the real buff_spd tag.
   sa_6: { kind: 'multi_hit', hits: 3, multiplierPerHit: 1.0,
     selfDebuff: { tag: 'debuff_def', turns: 1, magnitude: 50 }, cooldown: 4 },  // Reckless Charge
 

@@ -52,7 +52,7 @@ function findDoorOf(barId: string): { col: number; row: number } | null {
 /** Renders a 9×7 tile window of the map centered on the player.
  *  Camera tweens smoothly over CAM_TWEEN_MS instead of snapping. */
 const CAM_TWEEN_MS = 140;
-function CameraViewport({
+const CameraViewport = React.memo(function CameraViewport({
   col, row, dir, step, claimedBarIds,
 }: { col: number; row: number; dir: Direction; step: number; claimedBarIds: readonly string[] }) {
   // Target camera (top-left tile of the viewport in tile units, fractional
@@ -98,6 +98,16 @@ function CameraViewport({
   const viewportH = VIEWPORT_ROWS * VIEWPORT_TILE;
   const tilemapScale = VIEWPORT_TILE / TILE_LOGICAL;
 
+  // Door positions for claimed bars — recomputed only when the claimed set
+  // changes, not on every camera-tween frame. Markers below read from this.
+  const claimedDoors = useMemo(
+    () =>
+      claimedBarIds
+        .map((barId) => ({ barId, door: findDoorOf(barId) }))
+        .filter((d): d is { barId: string; door: { col: number; row: number } } => d.door !== null),
+    [claimedBarIds],
+  );
+
   return (
     <View style={{
       width: viewportW,
@@ -117,18 +127,14 @@ function CameraViewport({
         <Tilemap />
       </View>
       {/* Pulsing rings over claimed bar doors */}
-      {claimedBarIds.map((barId) => {
-        const door = findDoorOf(barId);
-        if (!door) return null;
-        return (
-          <ClaimMarker
-            key={barId}
-            size={VIEWPORT_TILE}
-            left={(door.col - camCol) * VIEWPORT_TILE}
-            top={(door.row - camRow) * VIEWPORT_TILE}
-          />
-        );
-      })}
+      {claimedDoors.map(({ barId, door }) => (
+        <ClaimMarker
+          key={barId}
+          size={VIEWPORT_TILE}
+          left={(door.col - camCol) * VIEWPORT_TILE}
+          top={(door.row - camRow) * VIEWPORT_TILE}
+        />
+      ))}
       <View style={{
         position: 'absolute',
         left: (col - camCol) * VIEWPORT_TILE,
@@ -140,7 +146,7 @@ function CameraViewport({
       </View>
     </View>
   );
-}
+});
 
 export default function MapScreen() {
   const [col, setCol] = useState(SPAWN_COL);
@@ -152,6 +158,9 @@ export default function MapScreen() {
     () => Object.fromEntries(claimedBars.map((b) => [b.barId, b])),
     [claimedBars],
   );
+  // Stable array of claimed ids so the memoized CameraViewport doesn't see a
+  // fresh prop reference on every render.
+  const claimedBarIds = useMemo(() => Object.keys(claimedById), [claimedById]);
 
   // What door (if any) is the player standing on or adjacent to?
   const adjacentDoor: DoorTile = useMemo(() => {
@@ -221,15 +230,15 @@ export default function MapScreen() {
         <Pressable onPress={() => router.back()}>
           <PixelText size={12} color={UI.cursor}>◀ BACK</PixelText>
         </Pressable>
-        <PixelText size={14} color={UI.text}>WALK THE STREETS</PixelText>
-        <PixelText size={11} color={UI.textDim}>{claimedById && Object.keys(claimedById).length > 0 ? `${Object.keys(claimedById).length} CLAIMED` : `${col},${row}`}</PixelText>
+        <PixelText size={14} color={UI.text}>WALK THE WILD</PixelText>
+        <PixelText size={11} color={UI.textDim}>{claimedBarIds.length > 0 ? `${claimedBarIds.length} CLAIMED` : `${col},${row}`}</PixelText>
       </View>
 
       {/* Map viewport — camera follows player, edge-clamped */}
       <View style={{ alignItems: 'center', paddingVertical: 8 }}>
         <CameraViewport
           col={col} row={row} dir={dir} step={step}
-          claimedBarIds={Object.keys(claimedById)}
+          claimedBarIds={claimedBarIds}
         />
       </View>
 
@@ -256,12 +265,12 @@ export default function MapScreen() {
               {claim ? (
                 <PixelText size={10} color={UI.text} style={{ marginTop: 4 }}>
                   {defenderCls
-                    ? `Defender: ${defenderCls.name}`
-                    : 'Undefended — tap A to station a fighter.'}
+                    ? `Caretaker: ${defenderCls.name}`
+                    : 'Untended — tap A to station a caretaker.'}
                 </PixelText>
               ) : (
                 <PixelText size={10} color={UI.textDim} style={{ marginTop: 4 }}>
-                  Tap A or press ENTER to challenge.
+                  Tap A or press ENTER to soothe.
                 </PixelText>
               )}
             </Panel>
@@ -269,7 +278,7 @@ export default function MapScreen() {
         })() : (
           <Panel>
             <PixelText size={11} color={UI.textDim}>
-              Walk to a building — bars are doors with neon trim.
+              Walk to a place — gardens are gates with leafy trim.
             </PixelText>
           </Panel>
         )}

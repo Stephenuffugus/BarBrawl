@@ -61,7 +61,7 @@ export default function NominateScreen() {
         <Pressable onPress={() => router.back()}>
           <PixelText size={12} color={UI.cursor}>◀ BACK</PixelText>
         </Pressable>
-        <PixelText size={14} color={UI.text}>NOMINATE A BAR</PixelText>
+        <PixelText size={14} color={UI.text}>NOMINATE A PLACE</PixelText>
         <PixelText size={11} color={UI.textDim}>{nominations.length}</PixelText>
       </View>
 
@@ -69,17 +69,17 @@ export default function NominateScreen() {
         <Panel>
           <PixelText size={10} color={UI.textDim}>WHY</PixelText>
           <PixelText size={11} color={UI.text} style={{ marginTop: 4 }}>
-            Submit a real bar you want in the game. After dedup + manual
-            review (~48h in production), the bar drops onto the map for
+            Submit a real place you want in the game. After dedup + manual
+            review (~48h in production), the place appears on the map for
             everyone in your region. Owners can later claim verification.
           </PixelText>
         </Panel>
 
         <Panel>
           <PixelText size={11} color={UI.textDim} style={{ marginBottom: 4 }}>
-            BAR NAME
+            PLACE NAME
           </PixelText>
-          <Field value={barName} onChangeText={setBarName} placeholder="The Rusty Nail" />
+          <Field value={barName} onChangeText={setBarName} placeholder="The Wild Meadow" />
 
           <PixelText size={11} color={UI.textDim} style={{ marginTop: 8, marginBottom: 4 }}>
             ADDRESS
@@ -87,7 +87,7 @@ export default function NominateScreen() {
           <Field value={address} onChangeText={setAddress} placeholder="123 Main St" />
 
           <PixelText size={11} color={UI.textDim} style={{ marginTop: 8, marginBottom: 4 }}>
-            BAR TYPE
+            PLACE TYPE
           </PixelText>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}
             contentContainerStyle={{ gap: 4 }} style={{ flexGrow: 0 }}

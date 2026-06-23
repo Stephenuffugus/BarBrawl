@@ -29,7 +29,7 @@ describe('createLevel1Character', () => {
 
   it('defaults display name to class name but accepts override', () => {
     const autoNamed = createLevel1Character({ userId: 'u1', classId: 'brewer' });
-    expect(autoNamed.name).toBe('The Bouncer');
+    expect(autoNamed.name).toBe('The Bulwark');
     const custom = createLevel1Character({ userId: 'u1', classId: 'brewer', name: 'Vinny' });
     expect(custom.name).toBe('Vinny');
   });
@@ -58,9 +58,10 @@ describe('toRuntime stat scaling', () => {
     const row = createLevel1Character({ userId: 'u1', classId: 'steady' });
     const leveled = { ...row, level: 11 };
     const rt = toRuntime(leveled);
-    // Base steady: 110/11/11/11/11. At level 11: +60 HP, +20 ATK, +10 DEF, +5 SPD.
+    // Base steady: 110/11/11/11/11. At level 11: +60 HP, +30 ATK, +10 DEF, +5 SPD.
+    // BALANCE: ATK gain is *3/level (was *2) — see bootstrap.ts.
     expect(rt.stats.hp).toBe(170);
-    expect(rt.stats.atk).toBe(31);
+    expect(rt.stats.atk).toBe(41);
     expect(rt.stats.def).toBe(21);
     expect(rt.stats.spd).toBe(16);
     expect(rt.stats.luck).toBe(11); // LUCK doesn't scale per level

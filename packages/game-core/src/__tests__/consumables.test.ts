@@ -35,7 +35,7 @@ function setupHurtFight() {
   });
 }
 
-describe('Small Brew — heal_pct 30%', () => {
+describe('Soothing Salve — heal_pct 30%', () => {
   it('heals 30% of max HP', () => {
     const state = setupHurtFight();
     const player = state.combatants[0]!;
@@ -63,7 +63,7 @@ describe('Small Brew — heal_pct 30%', () => {
   });
 });
 
-describe('House Special — heal_pct 70%', () => {
+describe('Garden Tonic — heal_pct 70%', () => {
   it('heals 70% of max HP', () => {
     const state = setupHurtFight();
     const player = state.combatants[0]!;
@@ -76,7 +76,7 @@ describe('House Special — heal_pct 70%', () => {
   });
 });
 
-describe('Shot of Courage — +40% ATK, 3 turns', () => {
+describe('Wildfire Tea — +40% ATK, 3 turns', () => {
   it('applies buff_atk status with magnitude 40 and 3 turns', () => {
     const state = setupHurtFight();
     const next = applyPlayerAction(state, {
@@ -90,7 +90,7 @@ describe('Shot of Courage — +40% ATK, 3 turns', () => {
   });
 });
 
-describe('Iron Tonic — +50% DEF, 3 turns', () => {
+describe('Bark Poultice — +50% DEF, 3 turns', () => {
   it('applies buff_def', () => {
     const state = setupHurtFight();
     const next = applyPlayerAction(state, {
@@ -101,7 +101,7 @@ describe('Iron Tonic — +50% DEF, 3 turns', () => {
   });
 });
 
-describe('Palette Cleanser — cleanse', () => {
+describe('Cleansing Brew — cleanse', () => {
   it('removes debuffs but preserves buffs', () => {
     const row = createLevel1Character({ userId: 'u1', classId: 'brewer' });
     const rt = toRuntime({ ...row, level: 10 });
@@ -109,7 +109,7 @@ describe('Palette Cleanser — cleanse', () => {
       battleId: 'b1', seed: 's', player: rt,
       enemyTemplates: [{ id: 'e1', name: 'T' }],
     });
-    // Apply Shot of Courage (buff) then a debuff via Hex Mark skill.
+    // Apply Wildfire Tea (buff) then a debuff via Hex Mark skill.
     let s = applyPlayerAction(state, {
       kind: 'consumable', actorId: state.combatants[0]!.id, consumableId: 'shot_of_courage',
     }, { rng: seededRng(1) });
@@ -131,7 +131,7 @@ describe('Palette Cleanser — cleanse', () => {
   });
 });
 
-describe('Emergency Elixir — auto_revive', () => {
+describe('Reviving Seed — auto_revive', () => {
   it('records a revive-pending counter on the player', () => {
     const state = setupHurtFight();
     const next = applyPlayerAction(state, {
@@ -139,6 +139,6 @@ describe('Emergency Elixir — auto_revive', () => {
     }, { rng: seededRng(1) });
     const player = next.combatants[0]!;
     expect(player.counters?.['revive_pending_hp']).toBeGreaterThan(0);
-    expect(next.log.some((l) => l.text.includes('Emergency Elixir'))).toBe(true);
+    expect(next.log.some((l) => l.text.includes('Reviving Seed'))).toBe(true);
   });
 });

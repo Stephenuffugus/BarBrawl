@@ -1,10 +1,11 @@
-// GBC-style palette for BarBrawl. We use a 16-color "stage" palette per
+// GBC-style palette for Wild Wardens. We use a 16-color "stage" palette per
 // scene — Game Boy Color's hardware allowed 32k onscreen but per-tile only
-// 4 colors, which is what we lean into. Each bar theme defines its own
+// 4 colors, which is what we lean into. Each venue theme defines its own
 // 4-color tile palette + a shared UI palette for chrome.
 //
-// Aesthetic target: dark, neon-lit, barlight-warm. Black backgrounds with
-// crunchy color blocks. PS1-Master-System-when-it-could-show-off vibes.
+// Aesthetic target: lush, sunlit garden greenery — earthy soils, blooming
+// flowers, dappled leaf-light, mossy stone. Soft natural color blocks that
+// feel overgrown and alive, with a gentle storybook-botanical warmth.
 
 /* ─── universal palette ─────────────────────────────────────────── */
 
@@ -25,19 +26,19 @@ export const UI = {
   shadow: '#202028',
 } as const;
 
-/* ─── per-bar-theme tile palettes (4 colors + transparent) ─────────
+/* ─── per-venue tile palettes (4 colors + transparent) ─────────────
  * Convention: pal[0] = darkest, pal[3] = brightest. Transparent is `T`. */
 
 export type TilePalette = readonly [string, string, string, string];
 
 export const BAR_PALETTES = {
-  dive: ['#1a0f08', '#3d2510', '#a06028', '#f8c878'] as const,    // amber/brown
-  pub: ['#0a1a14', '#1d402a', '#5da870', '#c8f0a0'] as const,     // forest green
-  sports: ['#0a0e22', '#1c2860', '#4870c8', '#a0c8f8'] as const,  // royal blue
-  cocktail: ['#1a0a28', '#421860', '#9050d0', '#e0a8f8'] as const,// magenta-violet
-  wine: ['#180810', '#400820', '#902848', '#e87898'] as const,    // burgundy
-  brewery: ['#180e08', '#403018', '#c89048', '#f8e0a0'] as const, // hop-gold
-  nightclub: ['#080820', '#400860', '#e000a0', '#f870f0'] as const,// neon pink
+  dive: ['#0e1a0a', '#2c4818', '#6ca038', '#e8e070'] as const,    // Wild Meadow — earthy greens + wildflower yellow
+  pub: ['#1a1410', '#4a3a28', '#a87858', '#f8c0d0'] as const,     // Cottage Garden — warm soil + cozy floral pink
+  sports: ['#0a1e0c', '#1d5028', '#48b050', '#b8f088'] as const,  // Community Park — bright park greens
+  cocktail: ['#280a18', '#701030', '#d04068', '#f8a8c0'] as const,// Rose Garden — deep rose reds + petal pink
+  wine: ['#1a0e08', '#4a2810', '#b06828', '#f0c060'] as const,    // Old Orchard — bark brown + amber apple
+  brewery: ['#081a14', '#185038', '#40b078', '#c0f8c8'] as const, // Greenhouse — glass-green + bright leaf
+  nightclub: ['#060a20', '#142858', '#3858a8', '#f8d860'] as const,// Moonlit Grove — night blues + firefly gold
 } satisfies Record<string, TilePalette>;
 
 export type BarThemeId = keyof typeof BAR_PALETTES;
@@ -58,13 +59,13 @@ export const BODY = {
 
 /** Class accents — replaces the single "accent" color in body sprites. */
 export const CLASS_ACCENT = {
-  steady:    '#f8c020', // Operator — gold sights
-  brewer:    '#a07040', // Bouncer — leather jacket
-  vintner:   '#a040c0', // Hexwright — purple sigil
-  shaker:    '#e8e8e8', // Duelist — silver blade
-  orchardist:'#60c870', // Medic — emerald cross
-  drifter:   '#5870b0', // Ghost — slate cloak
-  gambler:   '#e04050', // Gambler — red felt / cards
+  steady:    '#f0d040', // The Operator — sunflower gold
+  brewer:    '#7a5838', // The Bulwark — sturdy bark brown
+  vintner:   '#9850b8', // The Hexwright — foxglove violet
+  shaker:    '#e8f0e0', // The Duelist — pale dewy silver-green
+  orchardist:'#58c060', // The Medic — healing leaf green
+  drifter:   '#6080a0', // The Ghost — misty slate-blue
+  gambler:   '#e07840', // The Forager — ripe-berry orange
 } as const;
 
 /* ─── helpers ───────────────────────────────────────────────────── */

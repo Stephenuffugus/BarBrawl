@@ -22,7 +22,7 @@ export interface MenuListProps {
  * the selected one. Tapping a row selects it (mobile UX); arrow-key style
  * navigation is layered on top of cursor state by the caller.
  */
-export function MenuList({ items, cursor, onSelect, onMove }: MenuListProps) {
+export const MenuList = React.memo(function MenuList({ items, cursor, onSelect, onMove }: MenuListProps) {
   return (
     <View>
       {items.map((item, idx) => {
@@ -59,4 +59,4 @@ export function MenuList({ items, cursor, onSelect, onMove }: MenuListProps) {
       })}
     </View>
   );
-}
+});

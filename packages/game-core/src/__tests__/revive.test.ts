@@ -9,7 +9,7 @@ function seededRng(seed: number): () => number {
   };
 }
 
-describe('Emergency Elixir auto-revive', () => {
+describe('Reviving Seed auto-revive', () => {
   it('saves a player from a killing blow, restoring to 50% HP', () => {
     const row = createLevel1Character({ userId: 'u1', classId: 'vintner' });
     const rt = toRuntime({ ...row, level: 3 });
@@ -34,7 +34,7 @@ describe('Emergency Elixir auto-revive', () => {
     const player = state.combatants[0]!;
     expect(player.stats.hp).toBeGreaterThan(0);
     expect(player.stats.hp).toBe(50); // 50% of maxHp 100
-    expect(state.log.some((l) => l.text.includes('saved by Emergency Elixir'))).toBe(true);
+    expect(state.log.some((l) => l.text.includes('saved by Reviving Seed'))).toBe(true);
     // Marker consumed.
     expect(player.counters?.['revive_pending_hp']).toBeUndefined();
   });

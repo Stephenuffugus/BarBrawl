@@ -36,10 +36,10 @@ export const CLASSES: readonly ClassDef[] = [
   },
   {
     id: 'brewer',
-    name: 'The Bouncer',
+    name: 'The Bulwark',
     icon: '🛡️',
     color: '#DAA520',
-    tagline: 'Heavy hitter. Slow to rile, hard to drop.',
+    tagline: 'Steady as old oak. Slow to rile, hard to drop.',
     baseStats: { hp: 130, atk: 12, def: 14, spd: 7, luck: 6 },
     resource: {
       kind: 'grit',
@@ -166,10 +166,10 @@ export const CLASSES: readonly ClassDef[] = [
   },
   {
     id: 'gambler',
-    name: 'The Gambler',
-    icon: '🎲',
+    name: 'The Forager',
+    icon: '🍀',
     color: '#e63946',
-    tagline: 'High variance. House rules are a suggestion.',
+    tagline: 'High variance. Fortune favors the bold.',
     baseStats: { hp: 100, atk: 10, def: 8, spd: 11, luck: 17 },
     resource: {
       kind: 'chips',

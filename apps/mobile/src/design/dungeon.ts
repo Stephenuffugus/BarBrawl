@@ -1,6 +1,7 @@
-// Bar interior tile catalog + 3-room layouts. Each room is a 12×8 grid.
-// Player spawns on an entry door, walks to the exit door to advance.
-// Final room contains the boss tile; stepping on it triggers /battle.
+// Overgrown-garden interior tile catalog + 3-room layouts. Each room is a
+// 12×8 grid. The warden spawns on an entry gate, walks to the exit gate to
+// press deeper. The final clearing holds the untamed guardian; stepping
+// onto it begins the soothing.
 
 import type { BarThemeId } from './palette';
 
@@ -21,10 +22,10 @@ export const INTERIOR_TILES: Readonly<Record<InteriorTile, InteriorTileDef>> = {
   entry: { passable: true },
   exit:  { passable: true, effect: 'advance' },
   boss:  { passable: true, effect: 'battle' },
-  table: { passable: false },
-  bar:   { passable: false },
-  // Patrols block tiles until defeated. The dungeon screen prompts the
-  // player to engage when standing adjacent.
+  table: { passable: false }, // raised planter bed
+  bar:   { passable: false }, // potting bench / glasshouse counter
+  // Wild growth blocks tiles until soothed. The dungeon screen prompts the
+  // warden to tend it when standing adjacent.
   patrol: { passable: false },
 };
 
@@ -56,8 +57,8 @@ function decodeRoom(s: string): InteriorTile[][] {
   });
 }
 
-/** Three escalating rooms — entry on left, exit/boss on right.
- *  P = patrol patron (blocks tile until engaged). */
+/** Three escalating clearings — entry gate on left, exit/guardian on right.
+ *  P = wild growth (blocks tile until soothed). */
 export const ROOMS: readonly InteriorTile[][][] = [
   decodeRoom(`
 ############
@@ -93,15 +94,16 @@ export const ROOMS: readonly InteriorTile[][][] = [
 
 export const ROOM_COUNT = ROOMS.length;
 
-/** Theme tints used to color interior tiles per bar. */
+/** Theme tints used to color interior tiles per garden site (floor =
+ *  mossy earth, wall = hedge/glass, accent = blossom/foliage). */
 export const INTERIOR_PALETTE: Record<BarThemeId, { floor: string; wall: string; accent: string }> = {
-  dive:      { floor: '#3d2510', wall: '#1a0f08', accent: '#a06028' },
-  pub:       { floor: '#1d402a', wall: '#0a1a14', accent: '#5da870' },
-  sports:    { floor: '#1c2860', wall: '#0a0e22', accent: '#4870c8' },
-  cocktail:  { floor: '#421860', wall: '#1a0a28', accent: '#9050d0' },
-  wine:      { floor: '#400820', wall: '#180810', accent: '#902848' },
-  brewery:   { floor: '#403018', wall: '#180e08', accent: '#c89048' },
-  nightclub: { floor: '#400860', wall: '#080820', accent: '#e000a0' },
+  dive:      { floor: '#2e4a22', wall: '#152610', accent: '#7bbf52' }, // Wild Meadow
+  pub:       { floor: '#1d402a', wall: '#0a1a14', accent: '#8fd27a' }, // Cottage Garden
+  sports:    { floor: '#26451c', wall: '#101f0c', accent: '#9fd24a' }, // Community Park
+  cocktail:  { floor: '#3a2046', wall: '#170a20', accent: '#d87ac0' }, // Rose Garden
+  wine:      { floor: '#3a2818', wall: '#16100a', accent: '#d09a5a' }, // Old Orchard
+  brewery:   { floor: '#1e3a30', wall: '#0a1a14', accent: '#5fd0a0' }, // Greenhouse
+  nightclub: { floor: '#241846', wall: '#0c0822', accent: '#7c5ad8' }, // Moonlit Grove
 };
 
 /** Find the entry tile in a room (player spawn). */

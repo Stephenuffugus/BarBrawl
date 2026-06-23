@@ -88,18 +88,19 @@ export default function Title() {
       </Pressable>
       {/* GBC-style logo block */}
       <View style={{ alignItems: 'center', marginBottom: 56 }}>
+        {/* NAME TBD — placeholder rebrand from "BAR BRAWL". Redline freely. */}
         <PixelText size={36} color={UI.cursor} style={{ letterSpacing: 4 }}>
-          BAR
+          WILD
         </PixelText>
         <PixelText size={36} color={UI.text} style={{ letterSpacing: 4, marginTop: -8 }}>
-          BRAWL
+          WARDENS
         </PixelText>
         <View style={{
           width: 200, height: PIXEL,
           backgroundColor: UI.cursor, marginTop: 12,
         }} />
         <PixelText size={11} color={UI.textDim} style={{ marginTop: 12 }}>
-          Local Bars × Diablo Loot × Pokemon Soul
+          Tame the Wild × Tend Your Grove × Walk the Real World
         </PixelText>
       </View>
 
@@ -107,7 +108,7 @@ export default function Title() {
         onPress={() => router.push('/map')}
         style={menuBtn}
       >
-        <PixelText size={16} color={UI.cursor}>▶ WALK THE STREETS</PixelText>
+        <PixelText size={16} color={UI.cursor}>▶ WALK THE WILD</PixelText>
       </Pressable>
 
       <Pressable
@@ -214,7 +215,7 @@ export default function Title() {
               HOW TO PLAY
             </PixelText>
             <PixelText size={11} color={UI.text} style={{ marginBottom: 8 }}>
-              ▸ WALK THE STREETS to find bars. D-pad moves your fighter; step onto a bar door to enter.
+              ▸ WALK THE WILD to find overgrown places. D-pad moves your warden; step onto a gate to enter.
             </PixelText>
             <PixelText size={11} color={UI.text} style={{ marginBottom: 8 }}>
               ▸ Inside, clear three rooms and beat the boss to claim the bar.

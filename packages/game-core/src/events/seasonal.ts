@@ -1,6 +1,7 @@
 // Seasonal challenges — spec §5.10:
-//   "Pub Crawl Week (2× XP at Irish Pubs), Craft Beer Festival (breweries
-//    drop exclusive cosmetics), Sober October (2× XP for Steady class)."
+//   "Garden Bloom Week (2× XP at Cottage Gardens), Greenhouse Festival
+//    (greenhouses drop exclusive cosmetics), Operator's Season (2× XP for
+//    The Operator)."
 //
 // Spec's class references use old names (Steady); we translate to the
 // current reskin (Operator) — DB IDs preserved.
@@ -30,14 +31,14 @@ export interface SeasonalChallenge {
 export const SEASONAL_TEMPLATES: readonly Omit<SeasonalChallenge, 'startsAt' | 'endsAt'>[] = Object.freeze([
   {
     id: 'pub_crawl_week',
-    name: 'Pub Crawl Week',
-    description: '2× XP at Irish pubs.',
+    name: 'Garden Bloom Week',
+    description: '2× XP at Cottage Gardens.',
     modifier: { kind: 'xp_multiplier_by_bar_type', barType: 'pub', multiplier: 2 },
   },
   {
     id: 'brewery_fest',
-    name: 'Brewery Fest',
-    description: 'Breweries drop exclusive cosmetics.',
+    name: 'Greenhouse Festival',
+    description: 'Greenhouses drop exclusive cosmetics.',
     modifier: {
       kind: 'exclusive_cosmetic_drops',
       barType: 'brewery',
@@ -46,7 +47,7 @@ export const SEASONAL_TEMPLATES: readonly Omit<SeasonalChallenge, 'startsAt' | '
   },
   {
     id: 'operators_month',
-    name: "Operator's Month",
+    name: "Operator's Season",
     // Spec §5.10 originally used "Sober October" + "Steady class" naming. Renamed
     // per the class reskin decision — mechanics unchanged.
     description: '2× XP for The Operator (all venues).',
@@ -54,26 +55,26 @@ export const SEASONAL_TEMPLATES: readonly Omit<SeasonalChallenge, 'startsAt' | '
   },
   {
     id: 'wine_weekend',
-    name: 'Wine Weekend',
-    description: 'Double gold at wine bars.',
+    name: 'Orchard Weekend',
+    description: 'Double gold at Old Orchards.',
     modifier: { kind: 'xp_multiplier_by_bar_type', barType: 'wine', multiplier: 2 },
   },
   {
     id: 'neon_nights',
-    name: 'Neon Nights',
-    description: '2× XP at nightclubs.',
+    name: 'Moonlit Nights',
+    description: '2× XP at Moonlit Groves.',
     modifier: { kind: 'xp_multiplier_by_bar_type', barType: 'nightclub', multiplier: 2 },
   },
   {
     id: 'bouncer_week',
-    name: 'Bouncer Week',
-    description: '2× XP for The Bouncer.',
+    name: 'Bulwark Week',
+    description: '2× XP for The Bulwark.',
     modifier: { kind: 'xp_multiplier_by_class', classId: 'brewer', multiplier: 2 },
   },
   {
     id: 'gamblers_night',
-    name: "Gambler's Night",
-    description: '2× gold everywhere (Gambler-themed event).',
+    name: "Forager's Night",
+    description: '2× gold everywhere (Forager-themed event).',
     modifier: { kind: 'gold_multiplier', multiplier: 2 },
   },
 ]);

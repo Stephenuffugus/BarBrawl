@@ -21,14 +21,16 @@ export interface ReserveChar {
 }
 
 /** Two normal enemies + one boss per bar theme. */
+// Caretaker reskin: each venue's wild things you calm + the guardian boss.
+// Keys are stable engine IDs (dive/pub/...); only display names changed.
 const ENEMY_LINEUPS: Record<BarThemeId, { patron: string; tough: string; boss: string }> = {
-  dive:      { patron: 'Drunken Patron',  tough: 'Pool Cue Bruiser',  boss: 'Bar Owner' },
-  pub:       { patron: 'Regular',         tough: 'Old Timer',         boss: 'Publican' },
-  sports:    { patron: 'Loud Fan',        tough: 'Bookie',            boss: 'Coach' },
-  cocktail:  { patron: 'Mixologist',      tough: 'Bottle Service',    boss: 'Sommelier' },
-  wine:      { patron: 'Vineyard Snob',   tough: 'Cellar Master',     boss: 'Vintner' },
-  brewery:   { patron: 'Hop Head',        tough: 'Cooper',            boss: 'Brewmaster' },
-  nightclub: { patron: 'Doorman',         tough: 'Promoter',          boss: 'DJ' },
+  dive:      { patron: 'Weed Sprite',   tough: 'Bramble',      boss: 'Bramble King' },     // Wild Meadow
+  pub:       { patron: 'Hedge Imp',     tough: 'Thornback',    boss: 'Hedge Warden' },     // Cottage Garden
+  sports:    { patron: 'Leaf Pixie',    tough: 'Acorn Sprite', boss: 'Old Oak' },          // Community Park
+  cocktail:  { patron: 'Petal Sprite',  tough: 'Thorn Vine',   boss: 'Rose Matron' },      // Rose Garden
+  wine:      { patron: 'Windfall Imp',  tough: 'Crabapple',    boss: 'Orchard Elder' },    // Old Orchard
+  brewery:   { patron: 'Sproutling',    tough: 'Creeper Vine', boss: 'Great Fern' },       // Greenhouse
+  nightclub: { patron: 'Wisp',          tough: 'Nightbloom',   boss: 'Grove Guardian' },   // Moonlit Grove
 };
 
 /** Bouncer's 3 equipped actives — what the SkillPanel shows.

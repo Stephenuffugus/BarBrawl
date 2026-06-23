@@ -22,7 +22,7 @@ export const orchardTree: Tree = makeTree('or', [
 ]);
 
 export const fermentTree: Tree = makeTree('fe', [
-  ['Caustic Oil',       '+3 DoT dmg',                       'Small bottle, slow burn.'],
+  ['Caustic Oil',       '+3 DoT dmg',                       'A pressed sap that stings the wild.'],
   ['Fester',            '+1 turn DoT',                      'It stays with them.'],
   ['Septic Strike',     'Active: 5% HP/turn for 5 turns',   'Slow. Certain.'],
   ['Contagion',         'DoTs 20% spread',                  'It jumps.'],

@@ -14,6 +14,7 @@ export type StatusEffectTag =
   | 'curse'                                 // Hexwright stacking curse
   | 'slow'                                  // -SPD
   | 'buff_atk' | 'buff_def' | 'buff_crit'   // self buffs (pct)
+  | 'buff_spd'                              // self SPD buff (pct) — real speed status
   | 'debuff_atk' | 'debuff_def' | 'debuff_crit' // enemy debuffs (pct)
   | 'dodge_up'                              // pct dodge boost
   | 'block'                                 // block next N hits
@@ -48,6 +49,13 @@ export type SkillAction =
       cooldown?: number;
       oncePerBattle?: boolean;
       critMultiplierOverride?: number;
+      /**
+       * Hexwright "Unleash": consume all banked charge ("Hoarded Power")
+       * stacks the actor holds and add `chargeScalingPerStack` to the
+       * multiplier per stack. The charge statuses are removed when spent.
+       */
+      consumeCharges?: boolean;
+      chargeScalingPerStack?: number;
     }
   // Multiple hits at multiplierPerHit each. Crit rolls independently per hit.
   | {

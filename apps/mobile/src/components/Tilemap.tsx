@@ -15,7 +15,7 @@ export interface TilemapProps {
  * This is intentionally minimal — Phase 14 will replace each tile with a
  * 16×16 sprite via PixelGrid. The grid math is what matters today.
  */
-export function Tilemap({ size = TILE_LOGICAL }: TilemapProps) {
+export const Tilemap = React.memo(function Tilemap({ size = TILE_LOGICAL }: TilemapProps) {
   const cells = useMemo(() => {
     const out: { col: number; row: number; tile: keyof typeof TILES }[] = [];
     for (let r = 0; r < MAP_ROWS; r++) {
@@ -63,4 +63,4 @@ export function Tilemap({ size = TILE_LOGICAL }: TilemapProps) {
       })}
     </View>
   );
-}
+});

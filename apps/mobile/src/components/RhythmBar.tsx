@@ -8,7 +8,7 @@ import { PIXEL } from '@/design/scale';
 import { playSfx } from '@/audio/sfx';
 import { PixelText } from './PixelText';
 
-const HOLD_MS = 450; // post-resolve pause before firing onResolve
+const HOLD_MS = 150; // BALANCE: post-resolve pause before firing onResolve (was 450 — felt sluggish)
 
 export interface RhythmBarProps {
   /** Total bar width in logical px. */
@@ -79,6 +79,19 @@ export function RhythmBar({ width = 280, onResolve, caption }: RhythmBarProps) {
                                     : 'menu_select');
   }, [resolved]);
 
+  // Keyboard support for web players: Spacebar / Enter commits the tap.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.addEventListener) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        onTap();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onTap]);
+
   const markerLeft = Math.max(0, Math.min(width - PIXEL * 2, pos * width - PIXEL));
   const markerColor =
     resolved?.quality === 'perfect' ? UI.cursor :
@@ -99,48 +112,65 @@ export function RhythmBar({ width = 280, onResolve, caption }: RhythmBarProps) {
                                       null;
 
   return (
-    <Pressable onPress={onTap} accessibilityRole="button" accessibilityLabel="Tap to commit rhythm">
-      <View style={{ alignItems: 'center', gap: 4 }}>
+    <Pressable onPress={onTap} accessibilityRole="button" accessibilityLabel="Tap, or press Space/Enter, to commit rhythm">
+      <View style={{ alignItems: 'center', gap: 6 }}>
         {caption ? (
           <PixelText size={11} color={UI.text}>{caption}</PixelText>
         ) : null}
+        {/* Big, obvious call to action while the window is open. */}
+        {!resolved ? (
+          <PixelText size={18} color={UI.cursor}>▶ TAP! ◀</PixelText>
+        ) : (
+          <PixelText size={18} color={markerColor}>{banner}</PixelText>
+        )}
         <View
           style={{
             width,
-            height: PIXEL * 6,
+            height: PIXEL * 8,
             backgroundColor: UI.bg,
-            borderColor: UI.border,
-            borderWidth: 1,
+            borderColor: UI.cursor,
+            borderWidth: 3,
             position: 'relative',
             overflow: 'hidden',
+            // Glowing button-like shadow so it reads as pressable.
+            shadowColor: UI.cursor,
+            shadowOpacity: 0.7,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 0 },
+            elevation: 6,
           }}
         >
-          {/* miss zone background (red, behind everything) */}
+          {/* miss zone background (dim red, behind everything) */}
           <View style={{
             position: 'absolute', left: 0, top: 0, width: '100%', height: '100%',
-            backgroundColor: '#3a0808', opacity: 0.5,
+            backgroundColor: '#5a0c0c', opacity: 0.55,
           }} />
-          {/* good zone */}
+          {/* good zone — bright GBC green */}
           <View style={{
             position: 'absolute', left: goodLeft, top: 0, width: goodWidth, height: '100%',
-            backgroundColor: '#0c2a0c',
+            backgroundColor: UI.hpFull,
           }} />
-          {/* perfect zone */}
+          {/* perfect zone — bright gold, the bullseye */}
           <View style={{
             position: 'absolute', left: perfLeft, top: 0, width: perfWidth, height: '100%',
-            backgroundColor: '#3a2a08',
+            backgroundColor: UI.cursor,
           }} />
-          {/* marker */}
+          {/* marker — wide bright column with a glow halo */}
           <View style={{
-            position: 'absolute', left: markerLeft, top: -2, bottom: -2,
-            width: PIXEL * 2, backgroundColor: markerColor,
+            position: 'absolute', left: markerLeft - PIXEL, top: -4, bottom: -4,
+            width: PIXEL * 4, backgroundColor: markerColor, opacity: 0.4,
+          }} />
+          <View style={{
+            position: 'absolute', left: markerLeft, top: -4, bottom: -4,
+            width: PIXEL * 2, backgroundColor: UI.text,
+            borderColor: markerColor, borderWidth: 1,
+            shadowColor: markerColor, shadowOpacity: 0.9,
+            shadowRadius: 6, shadowOffset: { width: 0, height: 0 },
           }} />
         </View>
         <View style={{ height: 18, justifyContent: 'center' }}>
-          {banner ? (
-            <PixelText size={14} color={markerColor}>{banner}</PixelText>
-          ) : (
-            <PixelText size={10} color={UI.textDim}>TAP IN THE GOLD</PixelText>
+          {resolved ? null : (
+            <PixelText size={10} color={UI.textDim}>HIT THE GOLD — TAP OR PRESS SPACE</PixelText>
           )}
         </View>
       </View>

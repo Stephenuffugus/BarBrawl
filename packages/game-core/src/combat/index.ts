@@ -28,13 +28,21 @@
 //   - Consumable effects: spec §5.8 catalog resolved in consumables/.
 //   - Gating marks: resistance marks + VIP keys checked in gating/.
 //
+// Now fleshed out (were shallow — see docs/PLAN_OF_ATTACK.md C4):
+//   - Ghost SPD buff is a real `buff_spd` status tag (sa_3 Quickening),
+//     applied to effective SPD in deriveEffectiveStats — no longer a
+//     dodge_up proxy.
+//   - HOUSE EDGE keystone (di_9): real coin-flip per attack — win = 2x
+//     damage, loss = 0-damage whiff (no status-on-hit lands on a whiff).
+//   - Hexwright Unleash (vn_6): consumes banked `charge` ("Hoarded Power")
+//     stacks, adding chargeScalingPerStack to the multiplier per stack.
+//
 // Still display-only / TODO:
 //   - A handful of status approximations (slow → debuff_def, blind →
 //     mark) will get their own tags once the full StatusEffect taxonomy
 //     stabilizes.
-//   - 5 shallow mechanics (see docs/STATUS.md "shallow spots"): Hexwright
-//     Reserve stack scaling, Ghost SPD buff tag, Medic consumable-slot
-//     expansion, time-scaling passives, coin-flip keystone 2x/0x.
+//   - Remaining shallow mechanics (see docs/PLAN_OF_ATTACK.md C4): Medic
+//     consumable-slot expansion, time-scaling passives (vn_1 +1%/min).
 
 export * from './types';
 export { initBattle, scaleEnemyStats, playerCombatant, enemyCombatant,

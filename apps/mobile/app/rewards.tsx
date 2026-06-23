@@ -49,12 +49,12 @@ export default function RewardsScreen() {
     <View style={{ flex: 1, backgroundColor: UI.bg, paddingTop: 24 }}>
       <View style={{ alignItems: 'center', marginBottom: 12 }}>
         <PixelText size={28} color={UI.cursor} style={{ letterSpacing: 4 }}>
-          VICTORY
+          TAMED
         </PixelText>
         <View style={{ width: 200, height: PIXEL, backgroundColor: UI.cursor, marginTop: 8 }} />
         {params.label ? (
           <PixelText size={11} color={UI.textDim} style={{ marginTop: 8 }}>
-            YOU CLEARED {params.label.toUpperCase()}
+            {params.label.toUpperCase()} IS CALM AGAIN
           </PixelText>
         ) : null}
       </View>
@@ -87,17 +87,17 @@ export default function RewardsScreen() {
         {/* Claim status */}
         {claim ? (
           <Panel style={{ borderColor: UI.cursor, borderWidth: PIXEL }}>
-            <PixelText size={11} color={UI.cursor}>BAR CLAIMED</PixelText>
+            <PixelText size={11} color={UI.cursor}>YOU'RE THE KEEPER</PixelText>
             <PixelText size={14} color={UI.text} style={{ marginTop: 4 }}>
               {claim.label}
             </PixelText>
             {claim.defenderClassId ? (
               <PixelText size={10} color={UI.hpFull} style={{ marginTop: 2 }}>
-                Defender stationed.
+                Caretaker stationed.
               </PixelText>
             ) : (
               <PixelText size={10} color={UI.textDim} style={{ marginTop: 2 }}>
-                Undefended. Station a fighter to earn while you sleep.
+                Untended. Station a caretaker to gather while you're away.
               </PixelText>
             )}
           </Panel>
@@ -122,7 +122,7 @@ export default function RewardsScreen() {
             }}
           >
             <PixelText size={14} color={UI.cursor}>
-              ▶ {claim.defenderClassId ? 'CHANGE DEFENDER' : 'STATION A DEFENDER'}
+              ▶ {claim.defenderClassId ? 'CHANGE CARETAKER' : 'STATION A CARETAKER'}
             </PixelText>
           </Pressable>
         ) : null}
@@ -134,7 +134,7 @@ export default function RewardsScreen() {
             backgroundColor: UI.bg,
           }}
         >
-          <PixelText size={14} color={UI.text}>BACK TO STREETS</PixelText>
+          <PixelText size={14} color={UI.text}>BACK TO THE WILD</PixelText>
         </Pressable>
       </View>
     </View>

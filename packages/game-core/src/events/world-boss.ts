@@ -1,19 +1,19 @@
-// World boss (Weekly Titan) logic — spec §5.10.
+// World boss (Weekly Wildheart) logic — spec §5.10.
 //
-//   "Every Saturday 8pm local, a random verified high-tier bar in each
-//    region becomes a 'Titan' for 48 hours. HP is in the millions — the
-//    player community collectively chips it down. Damage contribution
-//    determines individual rewards."
+//   "Every Saturday 8pm local, a random verified high-tier site in each
+//    region awakens as 'The Wildheart' for 48 hours. Its untamed energy is
+//    in the millions — the keeper community collectively soothes it down.
+//    Soothing contribution determines individual rewards."
 //
 // Pure functions. The scheduler (cron) spawns a WorldBoss at Saturday 8pm;
-// edge functions apply hits as players win combat against the Titan bar;
+// edge functions apply hits as keepers gentle the Wildheart site;
 // a final sweep at end-of-window pays out rewards.
 
 export type WorldBossPhase = 'pending' | 'active' | 'ended';
 
 export interface WorldBoss {
   id: string;
-  /** The bar hosting this Titan. */
+  /** The site hosting this Wildheart. */
   barId: string;
   /** Region/city identifier (e.g. "nyc", "sf"). */
   region: string;
@@ -21,14 +21,14 @@ export interface WorldBoss {
   currentHp: number;
   startsAt: string;  // ISO
   endsAt: string;    // ISO
-  /** Map of user_id → total damage dealt to this Titan. */
+  /** Map of user_id → total soothing dealt to this Wildheart. */
   contributions: Readonly<Record<string, number>>;
 }
 
 export const WORLD_BOSS_RULES = Object.freeze({
   /** Duration of the window from spawn. */
   WINDOW_HOURS: 48,
-  /** Typical titan HP floor. Should be scaled by region population in prod. */
+  /** Typical Wildheart HP floor. Should be scaled by region population in prod. */
   DEFAULT_MAX_HP: 5_000_000,
 });
 

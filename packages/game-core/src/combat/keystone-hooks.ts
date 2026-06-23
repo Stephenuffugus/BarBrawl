@@ -32,6 +32,10 @@ export interface HookResult {
   convertToDot: boolean;
   /** DoT magnitude when convertToDot is true. */
   dotMagnitudeOverride?: number;
+  /** HOUSE EDGE coin-flip lost: this attack whiffs for 0 damage. */
+  forceWhiff: boolean;
+  /** HOUSE EDGE coin-flip won: this attack hits for 2x (folded into damageScale). */
+  coinFlipWon: boolean;
 }
 
 function empty(): HookResult {
@@ -43,6 +47,8 @@ function empty(): HookResult {
     extraDefIgnore: 0,
     nonCritPenalty: 1,
     convertToDot: false,
+    forceWhiff: false,
+    coinFlipWon: false,
   };
 }
 
@@ -61,14 +67,33 @@ export interface HookContext {
   targetStunned: boolean;
   /** Whether a crit is about to land (before hooks). */
   willCrit: boolean;
+  /**
+   * Coin-flip roll in [0,1) used by HOUSE EDGE (di_9). < 0.5 wins (2x),
+   * >= 0.5 loses (whiff). Caller supplies a fresh roll per attack so the
+   * keystone has real 2x/0x semantics. Omit when di_9 is not allocated.
+   */
+  coinFlip?: number;
 }
 
 export function computeHookAdjustments(ctx: HookContext): HookResult {
   const r = empty();
-  for (const nodeId of ctx.actor.allocatedNodes ?? []) {
+  const allocated = ctx.actor.allocatedNodes ?? [];
+  for (const nodeId of allocated) {
     const p = passiveFor(nodeId);
     if (!p) continue;
     applyHook(r, p, nodeId, ctx);
+  }
+  // HOUSE EDGE (di_9): every attack flips a coin — win = 2x damage, lose =
+  // 0 damage (a whiff). Handled here rather than in applyHook because di_9's
+  // PassiveEffect is `all_crit` (a stat-side approximation) and the coin-flip
+  // is a separate combat hook keyed to the node id.
+  if (allocated.includes('di_9') && ctx.coinFlip !== undefined) {
+    if (ctx.coinFlip < 0.5) {
+      r.coinFlipWon = true;
+      r.damageScale *= 2;
+    } else {
+      r.forceWhiff = true;
+    }
   }
   return r;
 }

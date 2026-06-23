@@ -27,43 +27,43 @@ export interface Recipe {
 export const RECIPES: readonly Recipe[] = Object.freeze([
   {
     consumableId: 'small_brew',
-    label: 'Combine 2 common items into a Small Brew.',
+    label: 'Combine 2 common items into a Soothing Salve.',
     ingredients: [{ rarity: 'common', count: 2 }],
   },
   {
     consumableId: 'house_special',
-    label: 'Combine 3 uncommon items into a House Special.',
+    label: 'Combine 3 uncommon items into a Garden Tonic.',
     ingredients: [{ rarity: 'uncommon', count: 3 }],
   },
   {
     consumableId: 'shot_of_courage',
-    label: 'Combine 2 uncommon weapons into a Shot of Courage.',
+    label: 'Combine 2 uncommon tools into a Wildfire Tea.',
     ingredients: [{ rarity: 'uncommon', slot: 'weapon', count: 2 }],
   },
   {
     consumableId: 'iron_tonic',
-    label: 'Combine 2 uncommon outfits into an Iron Tonic.',
+    label: 'Combine 2 uncommon outfits into a Bark Poultice.',
     ingredients: [{ rarity: 'uncommon', slot: 'outfit', count: 2 }],
   },
   {
     consumableId: 'focus_vial',
-    label: 'Transmute 1 rare item into a Focus Vial.',
+    label: 'Transmute 1 rare item into a Clarity Tincture.',
     ingredients: [{ rarity: 'rare', count: 1 }],
   },
   {
     consumableId: 'emergency_elixir',
-    label: 'Distill 1 epic item (or 3 rare) into an Emergency Elixir.',
+    label: 'Distill 1 epic item (or 3 rare) into a Reviving Seed.',
     ingredients: [{ rarity: 'epic', count: 1 }],
   },
   {
     // Alt recipe for the same consumable. RECIPE_BY_ID dedupes via _alt suffix.
     consumableId: 'emergency_elixir',
-    label: 'Alt: Distill 3 rare items into an Emergency Elixir.',
+    label: 'Alt: Distill 3 rare items into a Reviving Seed.',
     ingredients: [{ rarity: 'rare', count: 3 }],
   },
   {
     consumableId: 'palette_cleanser',
-    label: 'Combine 2 common items into a Palette Cleanser.',
+    label: 'Combine 2 common items into a Cleansing Brew.',
     ingredients: [{ rarity: 'common', count: 2 }],
   },
 ]);

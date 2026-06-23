@@ -1,5 +1,5 @@
-// Monthly Crawl Pass — spec §5.10:
-//   "Monthly Crawl Pass: Fortnite-style seasonal pass. 50 tiers. All
+// Monthly Bloom Pass — spec §5.10:
+//   "Monthly Bloom Pass: Fortnite-style seasonal pass. 50 tiers. All
 //    rewards are cosmetic. Earned XP tracks through normal play. ~$9.50
 //    to unlock, returns more coins than it costs if completed."
 //
@@ -7,7 +7,7 @@
 // edge layer (RevenueCat receipt verification); this module knows only
 // the public progression curve.
 //
-// NOTE: Per §3 ethics, Crawl Pass rewards MUST be cosmetic-only. This
+// NOTE: Per §3 ethics, Bloom Pass rewards MUST be cosmetic-only. This
 // module does not encode rewards — that's a content-config concern
 // — but the TIER_COUNT and XP_PER_TIER are the progression spine.
 

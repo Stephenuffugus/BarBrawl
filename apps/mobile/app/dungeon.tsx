@@ -180,10 +180,10 @@ export default function DungeonScreen() {
         {adjacentPatrol ? (
           <Panel style={{ borderColor: UI.hpHalf, borderWidth: PIXEL }}>
             <PixelText size={11} color={UI.hpHalf}>
-              ▶ A REGULAR BLOCKS YOUR PATH
+              ▶ SOMETHING WILD BLOCKS YOUR PATH
             </PixelText>
             <PixelText size={10} color={UI.textDim} style={{ marginTop: 4 }}>
-              Tap FIGHT to push them aside. +{PATROL_XP} XP.
+              Tap CALM to soothe it aside. +{PATROL_XP} XP.
             </PixelText>
             <Pressable
               onPress={onEngage}
@@ -193,7 +193,7 @@ export default function DungeonScreen() {
                 backgroundColor: UI.bg,
               }}
             >
-              <PixelText size={13} color={UI.cursor}>▶ FIGHT</PixelText>
+              <PixelText size={13} color={UI.cursor}>▶ CALM</PixelText>
             </Pressable>
           </Panel>
         ) : (

@@ -1,62 +1,62 @@
 import type { ResistanceMark, VIPKey } from './types';
 import type { BarType } from '../types';
 
-// Resistance marks drop from Tier 3 clears of a matching bar theme.
-// Each mark is slot=mark (new slot added in design doc §2.2) — it does NOT
-// occupy trinket. Players can carry multiple marks and swap loadout per run.
+// Wards drop from Tier 3 clears of a matching habitat theme.
+// Each ward is slot=mark (new slot added in design doc §2.2) — it does NOT
+// occupy trinket. Players can carry multiple wards and swap loadout per run.
 //
-// One mark per damage type at launch. Expansion adds tiered marks later
-// (e.g., "Greater Flame Ward" with higher strength + stat bonuses).
+// One ward per wild element at launch. Expansion adds tiered wards later
+// (e.g., "Greater Sun Ward" with higher strength + stat bonuses).
 
 export const RESISTANCE_MARKS: readonly ResistanceMark[] = Object.freeze([
   {
     id: 'mark_blunt',
-    name: 'Hardwood Ward',
+    name: 'Bramble Ward',
     against: 'blunt',
     strength: 0.6,
-    description: 'Dive-bar chairs and stools glance off.',
+    description: 'Tangled brambles and falling boughs glance off.',
   },
   {
     id: 'mark_sonic',
-    name: 'Dampened Ward',
+    name: 'Windsong Ward',
     against: 'sonic',
     strength: 0.6,
-    description: 'Sound blasts and strobe-stuns lose their sting.',
+    description: 'Resonant windsong and night air lose their sting.',
   },
   {
     id: 'mark_toxic',
-    name: 'Filter Ward',
+    name: 'Pollen Ward',
     against: 'toxic',
     strength: 0.6,
-    description: 'Burn DoTs and cocktail hazes barely register.',
+    description: 'Pollen haze and lingering sap barely register.',
   },
   {
     id: 'mark_impact',
     name: 'Bulwark Ward',
     against: 'impact',
     strength: 0.6,
-    description: 'Thrown glassware and pool balls bounce.',
+    description: 'Windfall and rolling stones bounce away.',
   },
   {
     id: 'mark_shadow',
     name: 'Lucid Ward',
     against: 'shadow',
     strength: 0.6,
-    description: 'Hexes and debuffs slip off you.',
+    description: 'Deep shade and blight slip off you.',
   },
   {
     id: 'mark_heat',
-    name: 'Kiln Ward',
+    name: 'Sun Ward',
     against: 'heat',
     strength: 0.6,
-    description: 'Brewery steam and fermenter blasts pass through.',
+    description: 'Greenhouse swelter and steam vents pass through.',
   },
   {
     id: 'mark_edged',
-    name: 'Thick Skin Ward',
+    name: 'Thornhide Ward',
     against: 'edged',
     strength: 0.6,
-    description: 'Broken glass and knives find no purchase.',
+    description: 'Thorns and sharp hedge growth find no purchase.',
   },
 ]);
 
@@ -68,18 +68,18 @@ export const RESISTANCE_MARK_BY_ID: Readonly<Record<string, ResistanceMark>> =
     }, {}),
   );
 
-// VIP Keys drop from a different-themed bar than the one they unlock, per
-// design §3.1.B. Creates cross-bar progression: cocktail-key drops at a
-// speakeasy, etc.
+// Gate keys drop from a different-themed habitat than the one they open, per
+// design §3.1.B. Creates cross-habitat progression: a Rose Garden key drops at
+// an Old Orchard, etc.
 
 export const VIP_KEYS: readonly VIPKey[] = Object.freeze([
-  { id: 'key_dive',      name: 'Back-Door Key',    forBarTheme: 'dive',      consumeOnUse: true, description: 'Opens the basement at any dive.' },
-  { id: 'key_pub',       name: 'Local\'s Nod',     forBarTheme: 'pub',       consumeOnUse: true, description: 'The snug in the back becomes yours.' },
-  { id: 'key_sports',    name: 'Owner\'s Token',   forBarTheme: 'sports',    consumeOnUse: true, description: "The owner's booth. Behind the scoreboard." },
-  { id: 'key_cocktail',  name: 'Unmarked Menu',    forBarTheme: 'cocktail',  consumeOnUse: true, description: 'The back-bar list is yours tonight.' },
-  { id: 'key_wine',      name: 'Reserve Card',     forBarTheme: 'wine',      consumeOnUse: true, description: 'The private cellar door unlocks.' },
-  { id: 'key_brewery',   name: "Brewer's Cask",    forBarTheme: 'brewery',   consumeOnUse: true, description: 'The reserve cellar opens for you.' },
-  { id: 'key_nightclub', name: 'VIP Wristband',    forBarTheme: 'nightclub', consumeOnUse: true, description: 'Past the rope at any club.' },
+  { id: 'key_dive',      name: 'Meadow Gate Key',     forBarTheme: 'dive',      consumeOnUse: true, description: 'Opens the hidden hollow within any Wild Meadow.' },
+  { id: 'key_pub',       name: 'Garden Gate Key',     forBarTheme: 'pub',       consumeOnUse: true, description: 'The walled nook of a Cottage Garden opens to you.' },
+  { id: 'key_sports',    name: 'Keeper\'s Token',     forBarTheme: 'sports',    consumeOnUse: true, description: "The Community Park's quiet grove, past the old gate." },
+  { id: 'key_cocktail',  name: 'Rose Seal',           forBarTheme: 'cocktail',  consumeOnUse: true, description: 'The inner Rose Garden bed is yours to tend.' },
+  { id: 'key_wine',      name: 'Orchard Pass',        forBarTheme: 'wine',      consumeOnUse: true, description: 'The old orchard\'s private rows unlock.' },
+  { id: 'key_brewery',   name: 'Greenhouse Key',      forBarTheme: 'brewery',   consumeOnUse: true, description: 'The sealed propagation room opens for you.' },
+  { id: 'key_nightclub', name: 'Moonlit Pass',        forBarTheme: 'nightclub', consumeOnUse: true, description: 'Past the wild thicket into any Moonlit Grove.' },
 ]);
 
 export const VIP_KEY_BY_BAR_THEME: Readonly<Record<BarType, VIPKey>> = Object.freeze(

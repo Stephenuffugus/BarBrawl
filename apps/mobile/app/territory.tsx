@@ -77,18 +77,18 @@ export default function TerritoryScreen() {
         <Pressable onPress={() => router.back()}>
           <PixelText size={12} color={UI.cursor}>◀ BACK</PixelText>
         </Pressable>
-        <PixelText size={14} color={UI.text}>YOUR TERRITORY</PixelText>
+        <PixelText size={14} color={UI.text}>YOUR HAVEN</PixelText>
         <PixelText size={11} color={UI.cursor}>{defendedCount}/{claimedBars.length}</PixelText>
       </View>
 
       <Panel style={{ marginHorizontal: 12, marginBottom: 8 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <View>
-            <PixelText size={11} color={UI.textDim}>BARS CLAIMED</PixelText>
+            <PixelText size={11} color={UI.textDim}>PLACES KEPT</PixelText>
             <PixelText size={20} color={UI.text}>{claimedBars.length}</PixelText>
           </View>
           <View>
-            <PixelText size={11} color={UI.textDim}>DEFENDED</PixelText>
+            <PixelText size={11} color={UI.textDim}>TENDED</PixelText>
             <PixelText size={20} color={UI.hpFull}>{defendedCount}</PixelText>
           </View>
           <View>
@@ -102,7 +102,7 @@ export default function TerritoryScreen() {
         {claimedBars.length === 0 ? (
           <Panel>
             <PixelText size={11} color={UI.textDim}>
-              No bars claimed yet. Walk the streets and challenge a door.
+              No places kept yet. Walk the wild and tend a gate.
             </PixelText>
           </Panel>
         ) : null}
@@ -159,7 +159,7 @@ function ClaimRow({
               </PixelText>
             ) : (
               <PixelText size={10} color={UI.hpHalf} style={{ marginTop: 2 }}>
-                Undefended — tap to station
+                Untended — tap to station
               </PixelText>
             )}
           </View>

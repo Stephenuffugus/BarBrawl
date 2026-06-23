@@ -40,6 +40,7 @@ function toInternalTag(tag: StatusEffectTag): StatusEffect['tag'] {
     case 'slow':       return 'debuff_def'; // approximate until SPD debuff lands
     case 'buff_atk':   return 'buff_atk';
     case 'buff_def':   return 'buff_def';
+    case 'buff_spd':   return 'buff_spd'; // real speed status tag
     case 'buff_crit':  return 'buff_atk'; // reuse atk slot; crit buff not yet distinct
     case 'debuff_atk': return 'debuff_def';
     case 'debuff_def': return 'debuff_def';
@@ -48,7 +49,7 @@ function toInternalTag(tag: StatusEffectTag): StatusEffect['tag'] {
     case 'block':      return 'buff_def';
     case 'immune_dot': return 'buff_def';
     case 'reflect':    return 'buff_def';
-    case 'charge':     return 'buff_atk';
+    case 'charge':     return 'charge'; // countable stored release (consumed by Unleash)
   }
 }
 
@@ -122,15 +123,18 @@ export function deriveEffectiveStats(
   let atkBuff = 0;
   let defBuff = 0;
   let defDebuff = 0;
+  let spdBuff = 0;
   for (const s of c.statusEffects) {
     if (s.tag === 'buff_atk')   atkBuff   += s.magnitude;
     if (s.tag === 'buff_def')   defBuff   += s.magnitude;
+    if (s.tag === 'buff_spd')   spdBuff   += s.magnitude;
     if (s.tag === 'debuff_def') defDebuff += s.magnitude;
   }
   const atk = Math.floor(afterPassives.atk * (1 + atkBuff / 100));
   const defBase = afterPassives.def * (1 + defBuff / 100);
   const def = Math.max(0, Math.floor(defBase * (1 - defDebuff / 100)));
-  return { ...afterPassives, atk, def };
+  const spd = Math.max(0, Math.floor(afterPassives.spd * (1 + spdBuff / 100)));
+  return { ...afterPassives, atk, def, spd };
 }
 
 /** Logs status ticks on a state, mutating log. */
@@ -143,13 +147,13 @@ export function logStatusTick(
   if (result.dotDamage > 0) {
     entries.push({
       turn: state.turn, actorId: combatant.id, kind: 'status',
-      text: `${combatant.name} takes ${result.dotDamage} DoT damage.`,
+      text: `${combatant.name} loses ${result.dotDamage} as the lingering remedy keeps working.`,
     });
   }
   for (const e of result.expired) {
     entries.push({
       turn: state.turn, actorId: combatant.id, kind: 'status',
-      text: `${combatant.name}'s ${e.label} expired.`,
+      text: `${combatant.name}'s ${e.label} fades away.`,
     });
   }
   return entries;

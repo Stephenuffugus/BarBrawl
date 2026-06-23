@@ -157,6 +157,10 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
   // convert-to-dot, crit-def-ignore, vs-status-dmg).
   const attacksLanded = actor.counters?.['attacks_landed'] ?? 0;
   const targetStatus = classifyTargetStatus(target);
+  // HOUSE EDGE (di_9): roll a fresh coin per attack so the keystone gets real
+  // 2x-or-whiff semantics. Only consume an RNG draw when the node is allocated.
+  const houseEdge = (actor.allocatedNodes ?? []).includes('di_9');
+  const coinFlip = houseEdge ? opts.rng() : undefined;
   // Pre-roll willCrit (rough) for crit_def_ignore gating — exact crit is
   // rolled below, but hooks need to know beforehand. We approximate using
   // the same formula.
@@ -168,6 +172,7 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
     attackIndex: attacksLanded,
     ...targetStatus,
     willCrit: willCritPre,
+    ...(coinFlip !== undefined ? { coinFlip } : {}),
   });
 
   // Crit policy: hook forceCrit > allCrit > guaranteedCrit > forceNonCrit > noCrit > default roll.
@@ -206,7 +211,8 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
   // Apply hook damage scale + non-crit penalty on non-crit.
   let scaledDamage = res.damage * hooks.damageScale;
   if (!res.crit) scaledDamage *= hooks.nonCritPenalty;
-  const finalDamage = Math.max(1, Math.floor(scaledDamage * damageTakenMult));
+  // HOUSE EDGE lost coin-flip: the attack whiffs for 0 (bypasses the 1-dmg floor).
+  const finalDamage = hooks.forceWhiff ? 0 : Math.max(1, Math.floor(scaledDamage * damageTakenMult));
 
   // OUTBREAK / convert_to_dot: half the direct damage, convert the rest to
   // a poison DoT applied to the target.
@@ -217,7 +223,11 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
     autoStatuses.push({ tag: 'poison', turns: 3, magnitude: perTurn });
   }
 
-  const prefix = opts.labelPrefix ?? (res.crit ? 'CRITS' : 'hits');
+  const prefix = hooks.forceWhiff
+    ? "HOUSE EDGE flips wrong and whiffs against"
+    : hooks.coinFlipWon
+      ? "HOUSE EDGE flips true, doubling into"
+      : opts.labelPrefix ?? (res.crit ? 'CRITS into' : 'soothes');
   const entry: BattleLogEntry = {
     turn: state.turn, actorId: actor.id, kind: 'skill',
     text: `${actor.name} ${prefix} ${target.name} for ${finalDamage}${opts.rhythm === 'perfect' ? ' (perfect!)' : ''}`,
@@ -239,10 +249,10 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
     const { revive_pending_hp: _consumed, ...rest } = nextTarget.counters ?? {};
     nextTarget = { ...nextTarget, counters: rest };
   }
-  if (opts.statusOnHit && opts.statusOnHit.length > 0 && newHp > 0) {
+  if (!hooks.forceWhiff && opts.statusOnHit && opts.statusOnHit.length > 0 && newHp > 0) {
     nextTarget = applyStatuses(nextTarget, opts.statusOnHit);
   }
-  if (autoStatuses.length > 0 && newHp > 0) {
+  if (!hooks.forceWhiff && autoStatuses.length > 0 && newHp > 0) {
     nextTarget = applyStatuses(nextTarget, autoStatuses);
   }
   let working: BattleState = {
@@ -298,7 +308,7 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
       ...working,
       log: appendLog(working, {
         turn: state.turn, actorId: target.id, kind: 'defeat',
-        text: `${target.name} is defeated.`,
+        text: `${target.name} settles, calm at last.`,
       }),
     };
   } else if (revived) {
@@ -306,7 +316,7 @@ function resolveSingleAttack(state: BattleState, opts: ResolveAttackOptions): Ba
       ...working,
       log: appendLog(working, {
         turn: state.turn, actorId: target.id, kind: 'info',
-        text: `${target.name} is saved by Emergency Elixir (${newHp} HP).`,
+        text: `${target.name} is saved by Reviving Seed, blooming back to ${newHp} HP.`,
       }),
     };
   }
@@ -334,7 +344,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
       ...state,
       log: appendLog(state, {
         turn: state.turn, actorId: actor.id, kind: 'info',
-        text: `${actor.name}'s skill is on cooldown.`,
+        text: `${actor.name} must let that remedy rest — still on cooldown.`,
       }),
     };
   }
@@ -343,9 +353,28 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
 
   switch (action.kind) {
     case 'attack': {
+      let multiplier = action.multiplier;
+      // Hexwright Unleash: consume banked charge ("Hoarded Power") stacks and
+      // add to the multiplier per stack, then strip the spent charges.
+      if (action.consumeCharges) {
+        const chargeStacks = actor.statusEffects.filter((s) => s.tag === 'charge').length;
+        if (chargeStacks > 0) {
+          multiplier += chargeStacks * (action.chargeScalingPerStack ?? 0);
+          const stripped: Combatant = {
+            ...actor,
+            statusEffects: actor.statusEffects.filter((s) => s.tag !== 'charge'),
+          };
+          working = { ...working, combatants: replaceAt(working.combatants, actorIdx, stripped) };
+          working = {
+            ...working,
+            log: appendLog(working, { turn: working.turn, actorId: actor.id, kind: 'skill',
+              text: `${actor.name} unleashes ${chargeStacks} banked Hoarded Power stack${chargeStacks > 1 ? 's' : ''}.` }),
+          };
+        }
+      }
       working = resolveSingleAttack(working, {
         actorIdx, targetIdx,
-        multiplier: action.multiplier,
+        multiplier,
         rhythm, rng,
         ...(action.guaranteedHit !== undefined ? { guaranteedHit: action.guaranteedHit } : {}),
         ...(action.guaranteedCrit !== undefined ? { guaranteedCrit: action.guaranteedCrit } : {}),
@@ -387,7 +416,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
               multiplier: action.multiplier,
               rhythm, rng,
               ...(action.statusOnHit ? { statusOnHit: action.statusOnHit } : {}),
-              labelPrefix: 'sweeps',
+              labelPrefix: 'calms the whole grove, reaching',
             });
           }
         }
@@ -400,7 +429,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
         working = {
           ...working,
           log: appendLog(working, { turn: state.turn, actorId: a.id, kind: 'info',
-            text: `${a.name}'s skill requires HP < 30%.` }),
+            text: `${a.name} can only tend this deeply when weary — requires HP < 30%.` }),
         };
         break;
       }
@@ -416,7 +445,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
         ...working,
         combatants: replaceAt(working.combatants, actorIdx, newA),
         log: appendLog(working, { turn: state.turn, actorId: a.id, kind: 'skill',
-          text: `${a.name} heals for ${amount}${action.cleanse ? ' (cleansed)' : ''}${overheal > 0 ? ` (banked ${overheal})` : ''}.` }),
+          text: `${a.name} mends, recovering ${amount}${action.cleanse ? ' (cleansed)' : ''}${overheal > 0 ? ` (banked ${overheal})` : ''}.` }),
       };
       if (action.targetRule === 'all_allies') {
         for (let i = 0; i < working.combatants.length; i++) {
@@ -440,7 +469,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
         combatants: replaceAt(working.combatants, targetIdx,
           applyStatuses(target, [{ tag: 'stun', turns: 1, magnitude: 1 }])),
         log: appendLog(working, { turn: state.turn, actorId: actor.id, kind: 'skill',
-          text: `${actor.name} skips ${target.name}'s next turn.` }),
+          text: `${actor.name} lulls ${target.name} so still it skips its next turn.` }),
       };
       break;
     }
@@ -458,7 +487,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
       working = {
         ...working,
         log: appendLog(working, { turn: state.turn, actorId: actor.id, kind: 'skill',
-          text: `${actor.name} buffs ${action.targetRule === 'all_allies' ? 'the party' : 'themselves'}.` }),
+          text: `${actor.name} heartens ${action.targetRule === 'all_allies' ? 'the whole company' : 'themselves'}.` }),
       };
       break;
     }
@@ -468,7 +497,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
         ...working,
         combatants: replaceAt(working.combatants, targetIdx, applyStatuses(target, action.debuffs)),
         log: appendLog(working, { turn: state.turn, actorId: actor.id, kind: 'skill',
-          text: `${actor.name} applies debuffs to ${target.name}.` }),
+          text: `${actor.name} applies a gentle hush over ${target.name}.` }),
       };
       break;
     }
@@ -478,7 +507,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
         combatants: replaceAt(working.combatants, actorIdx, applyStatuses(actor,
           [{ tag: 'dodge_up', turns: action.turns, magnitude: action.dodgePct }])),
         log: appendLog(working, { turn: state.turn, actorId: actor.id, kind: 'skill',
-          text: `${actor.name} readies to dodge.` }),
+          text: `${actor.name} steps light, ready to slip aside.` }),
       };
       break;
     }
@@ -490,7 +519,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
         ...working,
         combatants: replaceAt(working.combatants, actorIdx, applyStatuses(actor, statuses)),
         log: appendLog(working, { turn: state.turn, actorId: actor.id, kind: 'skill',
-          text: `${actor.name} braces.` }),
+          text: `${actor.name} braces, sheltering the grove behind them.` }),
       };
       break;
     }
@@ -501,7 +530,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
           { tag: 'charge', turns: action.chargeTurns, magnitude: action.releaseMultiplier * 100 },
         ])),
         log: appendLog(working, { turn: state.turn, actorId: actor.id, kind: 'skill',
-          text: `${actor.name} winds up (${action.chargeTurns} turn${action.chargeTurns > 1 ? 's' : ''}).` }),
+          text: `${actor.name} gathers stillness (${action.chargeTurns} turn${action.chargeTurns > 1 ? 's' : ''}).` }),
       };
       break;
     }
@@ -515,7 +544,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
       };
       working = resolveSingleAttack(working, {
         actorIdx, targetIdx, multiplier: action.multiplier, rhythm, rng,
-        labelPrefix: 'unleashes on',
+        labelPrefix: 'pours every gathered remedy into',
       });
       break;
     }
@@ -525,7 +554,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
       working = {
         ...working,
         log: appendLog(working, { turn: state.turn, actorId: actor.id, kind: 'skill',
-          text: `${actor.name} ${win ? 'WINS' : 'LOSES'} the wager.` }),
+          text: `${actor.name} reads the wind and ${win ? 'WINS' : 'LOSES'} the gamble of it.` }),
       };
       if (mult > 0) {
         working = resolveSingleAttack(working, {
@@ -550,7 +579,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
         working = {
           ...working,
           log: appendLog(working, { turn: state.turn, actorId: actor.id, kind: 'info',
-            text: `${actor.name} lacks Chips for this skill.` }),
+            text: `${actor.name} lacks Chips — too few saved seeds for this.` }),
         };
         break;
       }
@@ -561,7 +590,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
       working = { ...working, combatants: replaceAt(working.combatants, actorIdx, newA) };
       working = resolveSingleAttack(working, {
         actorIdx, targetIdx, multiplier: action.multiplier, rhythm, rng,
-        labelPrefix: 'goes all-in on',
+        labelPrefix: 'spends every saved seed to tend',
       });
       break;
     }
@@ -587,7 +616,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
       working = {
         ...working,
         log: appendLog(working, { turn: state.turn, actorId: actor.id, kind: 'skill',
-          text: `${actor.name} sends the room into a haze.` }),
+          text: `${actor.name} drifts a drowsy pollen across the clearing.` }),
       };
       break;
     }
@@ -599,7 +628,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
           { tag: 'debuff_crit', turns: action.turns, magnitude: action.critReductionPct },
         ])),
         log: appendLog(working, { turn: state.turn, actorId: actor.id, kind: 'skill',
-          text: `${actor.name} reads ${target.name}'s tells.` }),
+          text: `${actor.name} reads the restless habits of ${target.name}.` }),
       };
       break;
     }
@@ -616,7 +645,7 @@ function resolveSkillAction(state: BattleState, opts: DispatchOptions): BattleSt
           targetIdx, { ...target, stats: { ...target.stats, hp: newEnemyHp } },
         ),
         log: appendLog(working, { turn: state.turn, actorId: actor.id, kind: 'skill',
-          text: `${actor.name} swaps HP% with ${target.name}.` }),
+          text: `${actor.name} trades vigor with ${target.name}, balancing their HP%.` }),
       };
       break;
     }
@@ -661,7 +690,7 @@ export function applyPlayerAction(
       result: 'flee',
       log: appendLog(state, {
         turn: state.turn, actorId: actor.id, kind: 'flee',
-        text: `${actor.name} flees the fight.`,
+        text: `${actor.name} slips away to let the place settle another day.`,
       }),
     };
   }
@@ -688,7 +717,7 @@ export function applyPlayerAction(
       combatants: replaceAt(state.combatants, actorIdx, next),
       log: appendLog(state, {
         turn: state.turn, actorId: a.id, kind: 'info',
-        text: `${a.name} braces — will retaliate with 2 actions next turn.`,
+        text: `${a.name} braces, drawing in the wildness — will answer with 2 calming actions next turn.`,
       }),
     };
     // Advance to the next combatant so the player's turn actually ends.
@@ -714,7 +743,7 @@ export function applyPlayerAction(
       combatants: replaceAt(state.combatants, actorIdx, withBonus),
       log: appendLog(state, {
         turn: state.turn, actorId: a.id, kind: 'info',
-        text: `${a.name} trades SPD for a bonus action.`,
+        text: `${a.name} spends their swiftness for a bonus action.`,
       }),
     };
   }
@@ -771,7 +800,7 @@ export function advanceTurn(state: BattleState, opts: ApplyOptions): BattleState
         combatants: replaceAt(state.combatants, state.activeCombatantIndex, { ...current, counters }),
         log: appendLog(state, {
           turn: state.turn, actorId: current.id, kind: 'info',
-          text: `${current.name} takes a bonus action.`,
+          text: `${current.name} presses on with a bonus action.`,
         }),
       };
     }
@@ -814,7 +843,7 @@ export function advanceTurn(state: BattleState, opts: ApplyOptions): BattleState
       working = {
         ...working,
         log: appendLog(working, { turn: state.turn, actorId: nextActor.id, kind: 'status',
-          text: `${nextActor.name} is stunned and skips turn.` }),
+          text: `${nextActor.name} is too soothed to stir and skips its turn.` }),
       };
     }
   }
@@ -836,7 +865,7 @@ export function endBattle(
     rewards,
     log: appendLog(state, {
       turn: state.turn, actorId: 'system', kind: 'info',
-      text: `Battle ended: ${state.result ?? 'unresolved'}.`,
+      text: `Battle ended — the place is at peace: ${state.result ?? 'unresolved'}.`,
     }),
   };
 }
@@ -848,14 +877,14 @@ function applyConsumable(state: BattleState, actorIdx: number, consumableId: str
   const def = getConsumable(consumableId);
   const e = def.effect;
   let nextActor: Combatant = actor;
-  let text = `${actor.name} uses ${def.name}.`;
+  let text = `${actor.name} draws on ${def.name}.`;
 
   switch (e.kind) {
     case 'heal_pct': {
       const amount = Math.floor(actor.stats.maxHp * e.pct);
       const newHp = Math.min(actor.stats.maxHp, actor.stats.hp + amount);
       nextActor = { ...actor, stats: { ...actor.stats, hp: newHp } };
-      text = `${actor.name} uses ${def.name} and heals for ${amount}.`;
+      text = `${actor.name} draws on ${def.name} and mends for ${amount}.`;
       break;
     }
     case 'buff_self': {
@@ -863,13 +892,13 @@ function applyConsumable(state: BattleState, actorIdx: number, consumableId: str
                 : e.stat === 'def' ? 'buff_def'
                 : 'buff_crit';
       nextActor = applyStatuses(actor, [{ tag, turns: e.turns, magnitude: e.pct }]);
-      text = `${actor.name} uses ${def.name} (+${e.pct}% ${e.stat} for ${e.turns} turns).`;
+      text = `${actor.name} draws on ${def.name} (+${e.pct}% ${e.stat} for ${e.turns} turns).`;
       break;
     }
     case 'cleanse': {
       nextActor = { ...actor, statusEffects: actor.statusEffects.filter((s) =>
         s.tag === 'buff_atk' || s.tag === 'buff_def') };
-      text = `${actor.name} uses ${def.name} and cleanses debuffs.`;
+      text = `${actor.name} draws on ${def.name} and shakes off what ailed them.`;
       break;
     }
     case 'auto_revive': {
@@ -883,7 +912,7 @@ function applyConsumable(state: BattleState, actorIdx: number, consumableId: str
           revive_pending_hp: reviveTo,
         },
       };
-      text = `${actor.name} uses ${def.name} (revive prepared for ${reviveTo} HP).`;
+      text = `${actor.name} readies ${def.name} (a bloom held in reserve for ${reviveTo} HP).`;
       break;
     }
   }

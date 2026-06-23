@@ -19,19 +19,26 @@ function isBarTheme(s: string | undefined): s is BarThemeId {
   return !!s && s in BAR_PALETTES;
 }
 
+// Player-facing venue label (theme keys stay 'dive'/'pub'/... under the hood).
+const THEME_LABEL: Record<BarThemeId, string> = {
+  dive: 'WILD MEADOW', pub: 'COTTAGE GARDEN', sports: 'COMMUNITY PARK',
+  cocktail: 'ROSE GARDEN', wine: 'OLD ORCHARD', brewery: 'GREENHOUSE',
+  nightclub: 'MOONLIT GROVE',
+};
+
 const THEME_FLAVOR: Record<BarThemeId, string> = {
-  dive: 'Sticky floor. Cigarette smoke memory. Brass tap stuck on lukewarm.',
-  pub: 'Wood-paneled, brass-railed, somewhere on Boylston. Regulars only.',
-  sports: 'Twelve TVs. Two of them on. The wrong game.',
-  cocktail: 'Velvet booths. Three-deep at the rail. Small batch ice.',
-  wine: 'A single dim Edison bulb. The bartender wears a vest.',
-  brewery: 'Tank room visible behind glass. Yeast in the air.',
-  nightclub: 'Bass through the soles. The doorman is the most dangerous one inside.',
+  dive: 'Knee-high grass and stubborn brambles. Nobody has tended this in years.',
+  pub: 'Crooked little beds gone to seed. The trellises still remember their roses.',
+  sports: 'A public green run wild — picnic tables swallowed by ivy.',
+  cocktail: 'Once a showpiece rose garden. Now the thorns have opinions.',
+  wine: 'An old orchard, heavy and quiet. The eldest trees have grown watchful.',
+  brewery: 'Glass fogged with warmth. Inside, everything is reaching for the light.',
+  nightclub: 'A grove that only wakes at night. Fireflies, and something older.',
 };
 
 const THEME_BOSS_TITLE: Record<BarThemeId, string> = {
-  dive: 'BAR OWNER', pub: 'PUBLICAN', sports: 'COACH', cocktail: 'SOMMELIER',
-  wine: 'VINTNER', brewery: 'BREWMASTER', nightclub: 'DJ',
+  dive: 'BRAMBLE KING', pub: 'HEDGE WARDEN', sports: 'OLD OAK', cocktail: 'ROSE MATRON',
+  wine: 'ORCHARD ELDER', brewery: 'GREAT FERN', nightclub: 'GROVE GUARDIAN',
 };
 
 export default function PreviewScreen() {
@@ -75,7 +82,7 @@ export default function PreviewScreen() {
           <PixelText size={12} color={UI.cursor}>◀ LEAVE</PixelText>
         </Pressable>
         <PixelText size={11} color={UI.textDim}>
-          T{tier} · {theme.toUpperCase()} · {dmgType.toUpperCase()}
+          T{tier} · {THEME_LABEL[theme]} · {dmgType.toUpperCase()}
         </PixelText>
       </View>
 
@@ -94,7 +101,7 @@ export default function PreviewScreen() {
       </Panel>
 
       <View style={{ alignItems: 'center', marginVertical: 12 }}>
-        <PixelText size={10} color={UI.textDim}>WAITING IN BACK</PixelText>
+        <PixelText size={10} color={UI.textDim}>AT ITS HEART</PixelText>
         <PixelText size={14} color={UI.text} style={{ marginTop: 2 }}>
           {THEME_BOSS_TITLE[theme]}
         </PixelText>

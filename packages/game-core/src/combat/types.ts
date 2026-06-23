@@ -30,7 +30,7 @@ export interface CombatResource {
 export interface StatusEffect {
   id: string;
   /** Internal tag the engine uses to dispatch resolution logic. */
-  tag: 'buff_atk' | 'buff_def' | 'debuff_def' | 'bleed' | 'burn' | 'poison' | 'stun' | 'mark';
+  tag: 'buff_atk' | 'buff_def' | 'buff_spd' | 'debuff_def' | 'bleed' | 'burn' | 'poison' | 'stun' | 'mark' | 'charge';
   /** Remaining duration in turns. 0 = expires at end-of-turn. */
   turnsLeft: number;
   /** Magnitude used by the resolver (pct, flat amount, or DoT per turn). */

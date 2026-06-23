@@ -162,7 +162,7 @@ export default function InventoryScreen() {
         {visible.length === 0 ? (
           <Panel>
             <PixelText size={11} color={UI.textDim}>
-              No drops yet. Win a bar to fill the stash.
+              No finds yet. Soothe a place to fill the stash.
             </PixelText>
           </Panel>
         ) : null}

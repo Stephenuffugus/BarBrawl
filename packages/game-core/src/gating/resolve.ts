@@ -17,7 +17,7 @@ export interface SurvivalCheck {
 }
 
 /**
- * Can this character survive Tier-N content at a bar of the given theme?
+ * Can this character survive Tier-N content at a habitat of the given theme?
  * Tiers below GATING_BEGINS_AT_TIER are ungated (Metroidvania "always visible,
  * soft difficulty below, hard-lock above" rule).
  */
@@ -55,7 +55,7 @@ export interface VIPCheck {
   requiredKeyTheme?: BarType;
 }
 
-/** Does this character have a key for a given bar's VIP room? */
+/** Does this character have a gate key for a given habitat's inner grove? */
 export function canEnterVIPRoom(
   loadout: CharacterGatingLoadout,
   barTheme: BarType,
@@ -67,9 +67,9 @@ export function canEnterVIPRoom(
 }
 
 /**
- * Bar-theme mastery gates (design doc §3.1.C): Tier 4+ bars of a theme
+ * Habitat-theme mastery gates (design doc §3.1.C): Tier 4+ habitats of a theme
  * only render on the map after mastery Tier 3 (15 clears) of that theme.
- * Below that, the bar shows as grayed silhouette on the map.
+ * Below that, the habitat shows as a grayed silhouette on the map.
  */
 export const MASTERY_TIER_FOR_THEME_UNLOCK = 3;
 export const CLEARS_FOR_MASTERY_TIER_3 = 15;

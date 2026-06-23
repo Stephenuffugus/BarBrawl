@@ -36,10 +36,10 @@ import { useGameStore } from '@/state/game-store';
 
 /** Static command set; SWAP is appended dynamically when reserves exist. */
 const BASE_COMMAND_ITEMS: readonly MenuItem[] = [
-  { id: 'fight', label: 'FIGHT' },
+  { id: 'fight', label: '✿ SOOTHE' }, // 'fight' id is engine-stable; label reskinned (tame, not violence)
   { id: 'skill', label: 'SKILL' },
   { id: 'item',  label: 'ITEM' },
-  { id: 'run',   label: 'RUN' },
+  { id: 'run',   label: 'STEP BACK' },
 ];
 
 function isBarTheme(s: string | undefined): s is BarThemeId {
@@ -245,7 +245,7 @@ export default function BattleScreen() {
     setDemo({ ...demo, state: nextState, reserves: newReserves, classId: newClassId, equipped: swap.equipped });
     setActiveClassId(newClassId);
     playSfx('menu_select');
-    setTimeout(() => setPhase('idle'), 350);
+    setTimeout(() => setPhase('idle'), 120); // BALANCE: post-action freeze (was 350)
   }, [demo]);
 
   const onCancelSwap = useCallback(() => setPhase('idle'), []);
@@ -286,7 +286,7 @@ export default function BattleScreen() {
     }
     setDemo({ ...demo, state: next });
     playSfx('menu_select');
-    setTimeout(() => setPhase('idle'), 350);
+    setTimeout(() => setPhase('idle'), 120); // BALANCE: post-action freeze (was 350)
   }, [demo, consumeItem]);
 
   const onCancelItem = useCallback(() => setPhase('idle'), []);
@@ -331,7 +331,7 @@ export default function BattleScreen() {
 
     setDemo({ ...demo, state: next });
     setPending(null);
-    setTimeout(() => setPhase('idle'), 350);
+    setTimeout(() => setPhase('idle'), 120); // BALANCE: post-action freeze (was 350)
   }, [pending, demo]);
 
   // ── replay / continue ─────────────────────────────────────────
@@ -536,10 +536,10 @@ export default function BattleScreen() {
             ))
           )}
           {result === 'win' ? (
-            <PixelText size={14} color={UI.hpFull} style={{ marginTop: 4 }}>▶ VICTORY</PixelText>
+            <PixelText size={14} color={UI.hpFull} style={{ marginTop: 4 }}>▶ TAMED</PixelText>
           ) : null}
           {result === 'loss' ? (
-            <PixelText size={14} color={UI.hpLow} style={{ marginTop: 4 }}>▶ DEFEATED</PixelText>
+            <PixelText size={14} color={UI.hpLow} style={{ marginTop: 4 }}>▶ DRIVEN BACK</PixelText>
           ) : null}
         </ScrollView>
       </Panel>
@@ -622,7 +622,7 @@ export default function BattleScreen() {
               <RhythmBar
                 width={220}
                 onResolve={onRhythmResolved}
-                caption={pending?.kind === 'skill' ? 'SKILL — TIME IT' : 'STRIKE!'}
+                caption={pending?.kind === 'skill' ? 'SKILL — TIME YOUR TOUCH' : 'SOOTHE — TIME YOUR TOUCH'}
               />
             </Panel>
           ) : (
@@ -656,7 +656,7 @@ export default function BattleScreen() {
           </>
         ) : (
           <PixelText size={9} color={UI.textDim}>
-            Tap a command. SKILL opens loadout. Rhythm: hit the gold band.
+            Pick a command. SOOTHE calms the wild. Time your touch: tap (or Space) on the gold.
           </PixelText>
         )}
       </View>

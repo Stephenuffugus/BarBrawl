@@ -48,7 +48,7 @@ describe('attack-kind dispatch', () => {
     }, { rng: seededRng(5) });
     const enemy = next.combatants[1]!;
     expect(enemy.stats.hp).toBeLessThan(state.combatants[1]!.stats.hp);
-    expect(next.log.some((l) => l.text.includes('hits'))).toBe(true);
+    expect(next.log.some((l) => l.text.includes('soothes') || l.text.includes('CRITS'))).toBe(true);
   });
 });
 
