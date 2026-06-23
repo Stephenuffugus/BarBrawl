@@ -53,6 +53,13 @@ jobs:
         # `_expo/`, so without this marker the JS 404s.
         run: touch apps/mobile/dist/.nojekyll
 
+      - name: SPA fallback for GitHub Pages (404.html = index.html)
+        # GitHub Pages ignores our .htaccess (it's not Apache), so deep links
+        # and refreshes on any non-root route (/map, /preview, ...) 404. Pages'
+        # convention is to serve 404.html for unknown paths — make it a copy of
+        # index.html so the expo-router SPA boots and handles the route.
+        run: cp apps/mobile/dist/index.html apps/mobile/dist/404.html
+
       - name: Force-push dist to deploy branch
         env:
           DIST: apps/mobile/dist
